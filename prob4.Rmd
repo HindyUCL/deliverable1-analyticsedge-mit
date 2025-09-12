@@ -22,10 +22,22 @@ library(dplyr)
 ```
 
 ```{r}
-df_train <- read_csv("C:/Users/johnp/Documents/GitHub/deliverable1-analyticsedge-mit/Data/laptop_train.csv")
+# NOTE: Data files must be in a 'Data' subdirectory relative to this R Markdown file
+# Expected structure:
+#   - prob4.Rmd
+#   - Data/
+#     |- laptop_train.csv
+#     |- laptop_test.csv
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
-df_test <- read_csv("C:/Users/johnp/Documents/GitHub/deliverable1-analyticsedge-mit/Data/laptop_test.csv")
+# Verify working directory
+getwd()
+
+# Read CSV files using relative paths
+df_train <- read_csv("Data/laptop_train.csv")
+df_test <- read_csv("Data/laptop_test.csv")
 ```
+
 ```{r}
 head(df_train)    
 head(df_test)
