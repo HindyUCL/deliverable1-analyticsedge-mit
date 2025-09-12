@@ -1,0 +1,114 @@
+---
+title: "laptops"
+author: "Hindy Rossignol"
+date: "2025-09-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) # 
+```
+
+<!-- ```{r}
+
+# Import packages
+
+install.packages("readr")
+install.packages("dplyr")
+``` -->
+```{r}
+library(readr)
+library(dplyr)
+```
+
+```{r}
+df_train <- read_csv("C:/Users/johnp/Documents/GitHub/deliverable1-analyticsedge-mit/Data/laptop_train.csv")
+
+df_test <- read_csv("C:/Users/johnp/Documents/GitHub/deliverable1-analyticsedge-mit/Data/laptop_test.csv")
+```
+```{r}
+head(df_train)    
+head(df_test)
+```
+```{r}
+# We want to know the dimensions of our dataset. 
+dim(df_train) # there are 9 features and 665 observations
+dim(df_test) # there are 9 features and 280 observations
+```
+
+```{r}
+str(df_train)  # structure (variable types, first few entries)
+str(df_test)
+```
+
+```{r}
+summary(df_train)        # summary statistics by column
+summary(df_test)
+```
+
+```{r}
+colSums(is.na(df_train))   # number of NAs per column
+anyNA(df_train)            # check if dataset has any missing values
+```
+
+```{r}
+# Add binary column 'high' to training and test datasets
+df_train <- df_train %>%
+  mutate(high = ifelse(Price >= 500, 1, 0))
+
+df_test <- df_test %>%
+  mutate(high = ifelse(Price >= 500, 1, 0))
+
+# Check the distribution of the new binary variable in training set
+table(df_train$high)
+prop.table(table(df_train$high))
+
+# Check distribution in test set
+table(df_test$high)
+prop.table(table(df_test$high))
+```
+
+```{r}
+# Build logistic regression model
+# Dependent variable: 'high' (binary outcome: 1 = high price, 0 = low price)
+# Independent variables: InventoryID, Company, TypeName, GPU, Screen, Memory,
+# Weight, Rating
+# We include all predictors in the model without performing variable selection
+# Build logistic regression model
+logistic_model <- glm(high ~ InventoryID + Company + TypeName + GPU + Screen +
+                    Memory + Weight + Rating,
+                    data = df_train,
+                    family = "binomial")
+
+# Show model summary
+# This outputs coefficient estimates, significance levels,
+# and model fit statistics
+summary(logistic_model)
+```
+
+```{r}
+# Which variables are significant in predicting the probability of a
+# price's being high? Variables with p-values less than 0.05 are considered
+# statistically significant
+significant_vars <- summary(logistic_model)$coefficients
+significant_vars[significant_vars[,4] < 0.05, ]
+```
+
+```{r}
+# Generate predictions on test set
+test_predictions <- predict(logistic_model, newdata = df_test, type = "response")
+
+# Convert probabilities to binary predictions using 0.5 cutoff
+predicted_classes <- ifelse(test_predictions >= 0.5, 1, 0)
+
+# Calculate accuracy
+accuracy <- mean(predicted_classes == df_test$high)
+
+# Create confusion matrix
+conf_matrix <- table(Predicted = predicted_classes, Actual = df_test$high)
+
+# Display results
+print("Confusion Matrix:")
+print(conf_matrix)
+print(paste("Accuracy:", round(accuracy * 100, 2), "%"))
+```
