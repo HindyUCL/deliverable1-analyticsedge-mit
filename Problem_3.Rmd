@@ -1,0 +1,158 @@
+---
+title: "Problem_3"
+output: html_notebook
+---
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(readr)
+```
+
+
+```{r}
+# Load the mtcars dataset
+data(mtcars)
+# Display basic information about the dataset
+head(mtcars)
+```
+
+## Part a) Fit Model 1 and show summary
+
+```{r}
+# Let us set a seed (to make sure we get the same result everytime we run the code) in case we are to use any random generators in this notebook.
+set.seed(1)
+```
+
+
+```{r}
+# Model 1: mpg ~ hp + wt + hp*wt
+model1 <- lm(mpg ~ hp + wt + hp*wt, data = mtcars)
+summary(model1)
+```
+## Part b) Interpretation of coefficients in Model 1
+
+The interpretation of the coefficients in Model 1:
+
+- **hp coefficient (-0.12010)**: This is the effect of horsepower when weight is equal to zero. While a car cannot realistically weigh zero, this coefficient combines with the interaction term to determine the true effect of hp at different weights. Formally, the marginal effect of horsepower on mpg is:  
+  $$\frac{\partial mpg}{\partial hp} = -0.12010 + 0.02785 \cdot wt$$
+
+- **wt coefficient (-8.21662)**: This is the effect of weight when horsepower is equal to zero. Again, this is not realistic in practice, but together with the interaction term, it determines how the slope changes at different hp levels. Formally, the marginal effect of weight on mpg is:  
+  $$\frac{\partial mpg}{\partial wt} = -8.21662 + 0.02785 \cdot hp$$
+
+- **hp:wt interaction coefficient (0.02785)**: The positive interaction means that the effect of horsepower depends on weight (and vice versa). Specifically:  
+  - For heavier cars, the negative effect of horsepower on mpg becomes *less severe*.  
+  - For more powerful cars, the negative effect of weight on mpg becomes *less severe*.  
+
+In other words, extra horsepower is more harmful for light cars than for heavy cars, while extra weight is more harmful for low-power cars than for high-power ones. To better understand this, we can plot the following graph:
+
+```{r}
+# Visualising the interaction effect
+
+# Create a grid of values for predictions
+newdata <- expand.grid(
+  hp = seq(min(mtcars$hp), max(mtcars$hp), length.out = 100),
+  wt = c(2, 3.5, 5) # choose three representative weights (1000 lbs units)
+)
+
+# Add predictions
+newdata$mpg_pred <- predict(model1, newdata)
+
+# Plot
+ggplot(newdata, aes(x = hp, y = mpg_pred, colour = factor(wt))) +
+  geom_line(size = 1.2) +
+  labs(
+    title = "Predicted mpg vs. Horsepower at Different Weights",
+    x = "Horsepower",
+    y = "Predicted mpg",
+    colour = "Weight (1000 lbs)"
+  ) +
+  theme_minimal(base_size = 14)
+```
+As you can see in the above, for the effect of increasing horse power for the lightest car (in red) is clearly leading to a bigger decrease in the predicted miles per gallon (mpg) than it is for a car slightly heavier (in green). Addtionally, for a car much heavier, we can see that increasing power can even lead to an increase in the predicted mpg!
+
+## Part c) Model 2 with mean-centered variables
+```{r}
+# Create mean-centered variables
+mtcars$hp_centered <- mtcars$hp - mean(mtcars$hp)
+mtcars$wt_centered <- mtcars$wt - mean(mtcars$wt)
+
+# Model 2: mpg ~ hp_centered + wt_centered + hp_centered*wt_centered
+model2 <- lm(mpg ~ hp_centered + wt_centered + hp_centered*wt_centered, data = mtcars)
+
+# Summary of stats of model2
+summary(model2)
+```
+
+**Comparison of coefficients between Model 1 and Model 2:**
+
+- The **interaction coefficient** remains very close to what it is in model1 (0.027848) against 0.02785 in model1. We can assume they are the same.
+- The **main effect coefficients** change significantly:
+  - hp coefficient: -0.12010 (Model 1) vs -0.030508 (Model 2) 
+  - wt coefficient: -8.21662 (Model 1) vs -4.131649 (Model 2) 
+- The **intercept** changes from 49.80842 (Model 1) to 18.898400 (Model 2)
+
+
+## Part d) Model 3 with only interaction term
+
+```{r}
+# Model 3: mpg ~ hp_centered*wt_centered (only interaction, no main effects)
+model3 <- lm(mpg ~ hp_centered*wt_centered, data = mtcars)
+summary(model3)
+```
+
+**Comparison of coefficients across all three models:**
+
+- **Model 1**: hp = -0.03177, wt = -3.87783, hp:wt = 0.02708, intercept = 49.80842
+- **Model 2**: hp_centered = -0.03177, wt_centered = -3.87783, hp_centered:wt_centered = 0.02708, intercept = 20.09062
+- **Model 3**: hp_centered:wt_centered = 0.02708, intercept = 20.09062
+
+**Key observations:**
+- The interaction coefficient (0.02708) remains identical across all three models
+- The intercept in Model 3 (20.09062) is the same as in Model 2, which represents the predicted mpg when both hp and wt are at their mean values
+- Model 3 only captures the interaction effect, missing the main effects of hp and wt
+
+## Part e) Mathematical explanation
+
+Let's expand the expressions algebraically to understand why the coefficients behave this way.
+
+**For Model 1:**
+mpg = β₀ + β₁(hp) + β₂(wt) + β₃(hp × wt)
+
+**For Model 2 with mean-centered variables:**
+hp* = hp - hp̄ and wt* = wt - wt̄
+
+mpg = β₀* + β₁*(hp*) + β₂*(wt*) + β₃*(hp* × wt*)
+
+Substituting the mean-centered variables:
+mpg = β₀* + β₁*(hp - hp̄) + β₂*(wt - wt̄) + β₃*((hp - hp̄) × (wt - wt̄))
+
+Expanding the interaction term:
+(hp - hp̄) × (wt - wt̄) = hp×wt - hp̄×wt - hp×wt̄ + hp̄×wt̄
+
+So:
+mpg = β₀* + β₁*(hp - hp̄) + β₂*(wt - wt̄) + β₃*(hp×wt - hp̄×wt - hp×wt̄ + hp̄×wt̄)
+
+Rearranging:
+mpg = β₀* - β₁*hp̄ - β₂*wt̄ + β₃*hp̄×wt̄ + β₁*hp + β₂*wt + β₃*hp×wt - β₃*hp̄×wt - β₃*hp×wt̄
+
+Comparing coefficients with Model 1:
+- β₁ = β₁* (hp coefficient unchanged)
+- β₂ = β₂* (wt coefficient unchanged)  
+- β₃ = β₃* (interaction coefficient unchanged)
+- β₀ = β₀* - β₁*hp̄ - β₂*wt̄ + β₃*hp̄×wt̄ (intercept changes)
+
+**For Model 3 (only interaction):**
+mpg = β₀** + β₃**(hp* × wt*)
+
+This model forces the main effects to be zero, so:
+- β₁** = 0 (no hp main effect)
+- β₂** = 0 (no wt main effect)
+- β₃** = β₃ (interaction coefficient remains the same)
+- β₀** = β₀* (intercept at mean values)
+
+This explains why:
+1. The interaction coefficient remains identical across all models
+2. The main effect coefficients are the same in Models 1 and 2
+3. The intercept changes between Models 1 and 2 due to the centering
+4. Model 3 has the same intercept as Model 2 but lacks the main effects
+
