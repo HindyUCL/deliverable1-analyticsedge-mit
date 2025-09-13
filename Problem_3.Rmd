@@ -71,6 +71,7 @@ ggplot(newdata, aes(x = hp, y = mpg_pred, colour = factor(wt))) +
 As you can see in the above, for the effect of increasing horse power for the lightest car (in red) is clearly leading to a bigger decrease in the predicted miles per gallon (mpg) than it is for a car slightly heavier (in green). Addtionally, for a car much heavier, we can see that increasing power can even lead to an increase in the predicted mpg!
 
 ## Part c) Model 2 with mean-centered variables
+
 ```{r}
 # Create mean-centered variables
 mtcars$hp_centered <- mtcars$hp - mean(mtcars$hp)
@@ -85,31 +86,47 @@ summary(model2)
 
 **Comparison of coefficients between Model 1 and Model 2:**
 
+The underlying objective in centering the values taken by hp and wt around their mean is that, now, the hp coefficient represents the effect of horsepower on mpg when weight is at its average value, which is a much more realistic model than model1. Similarly, the wt coefficient represents the effect of weight on mpg when horsepower is at its mean value.
+
 - The **interaction coefficient** remains very close to what it is in model1 (0.027848) against 0.02785 in model1. We can assume they are the same.
 - The **main effect coefficients** change significantly:
   - hp coefficient: -0.12010 (Model 1) vs -0.030508 (Model 2) 
   - wt coefficient: -8.21662 (Model 1) vs -4.131649 (Model 2) 
 - The **intercept** changes from 49.80842 (Model 1) to 18.898400 (Model 2)
 
-
 ## Part d) Model 3 with only interaction term
 
 ```{r}
-# Model 3: mpg ~ hp_centered*wt_centered (only interaction, no main effects)
-model3 <- lm(mpg ~ hp_centered*wt_centered, data = mtcars)
+# Model 3: mpg ~ hp_centered:wt_centered (only interaction, no main effects)
+model3 <- lm(mpg ~ hp_centered:wt_centered, data = mtcars)
 summary(model3)
 ```
 
 **Comparison of coefficients across all three models:**
 
-- **Model 1**: hp = -0.03177, wt = -3.87783, hp:wt = 0.02708, intercept = 49.80842
-- **Model 2**: hp_centered = -0.03177, wt_centered = -3.87783, hp_centered:wt_centered = 0.02708, intercept = 20.09062
-- **Model 3**: hp_centered:wt_centered = 0.02708, intercept = 20.09062
+#### Model 3 results
+- **Intercept:** 19.41692  
+- **hp_centered:** excluded (forced to 0)  
+- **wt_centered:** excluded (forced to 0)  
+- **hp_centered : wt_centered:** 0.01574  
 
-**Key observations:**
-- The interaction coefficient (0.02708) remains identical across all three models
-- The intercept in Model 3 (20.09062) is the same as in Model 2, which represents the predicted mpg when both hp and wt are at their mean values
-- Model 3 only captures the interaction effect, missing the main effects of hp and wt
+---
+
+#### Comparison with Models 1 and 2
+- **Interaction coefficient:** The interaction term (≈ 0.01574) is near identical across all three models. This shows that centering or removing main effects does not highly impact the slope of the interaction.  
+- **Main effects:**  
+  - Models 1 and 2 include main effects for hp and wt. In Model 1 these are defined at unrealistic baselines (hp = 0, wt = 0), while in Model 2 they are defined at realistic baselines (mean hp, mean wt).  
+  - Model 3 excludes the main effects entirely, meaning the model assumes hp and wt only affect mpg through their joint interaction. This is an oversimplification that costs the R-squared value to drop drastically, bearly reaching 2% (i.e. 2% of the variations in mpg can be explained by the joined interaction of horsepower and weight). 
+  
+- **Intercept:**  
+  - Model 1: 49.80842 (predicted mpg when hp = 0 and wt = 0, not meaningful).
+  - Model 2: 18.898400 (predicted mpg at mean hp and mean wt, interpretable).
+  - Model 3: 19.41692 (close to Model 2, but adjusted upward because the main effects are missing).  
+
+---
+
+#### Interpretation
+Model 3 preserves the interaction effect but ignores the independent contributions of horsepower and weight. While its intercept represents predicted mpg at average hp and wt (similar to Model 2), excluding main effects makes it a weaker and less realistic specification. Models 1 and 2 therefore provide more accurate and interpretable insights into how hp and wt affect mpg, both individually and jointly. In this particular exercise, model 1 and 2 are the right choice since their relatively higher complexity is easily managed by modern computers and performs best on training data, as demonstrated by their adjusted R-squared value of 0.8724, which expresses that 87% of the variations in the miles per gallon can be explained by the combined effects of horsepower, weight, and their interaction.
 
 ## Part e) Mathematical explanation
 
