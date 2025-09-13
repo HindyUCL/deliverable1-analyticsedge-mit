@@ -5,9 +5,7 @@ output: html_notebook
 ```{r}
 library(ggplot2)
 library(tidyverse)
-library(readr)
 ```
-
 
 ```{r}
 # Load the mtcars dataset
@@ -18,16 +16,15 @@ head(mtcars)
 
 ## Part a) Fit Model 1 and show summary
 
-```{r}
-# Let us set a seed (to make sure we get the same result everytime we run the code) in case we are to use any random generators in this notebook.
-set.seed(1)
-```
-
 
 ```{r}
 # Model 1: mpg ~ hp + wt + hp*wt
 model1 <- lm(mpg ~ hp + wt + hp*wt, data = mtcars)
 summary(model1)
+
+# Extract R-squared values for comparison
+cat("Model 1 R-squared:", summary(model1)$r.squared, "\n")
+cat("Model 1 Adjusted R-squared:", summary(model1)$adj.r.squared, "\n")
 ```
 ## Part b) Interpretation of coefficients in Model 1
 
@@ -68,7 +65,7 @@ ggplot(newdata, aes(x = hp, y = mpg_pred, colour = factor(wt))) +
   ) +
   theme_minimal(base_size = 14)
 ```
-As you can see in the above, for the effect of increasing horse power for the lightest car (in red) is clearly leading to a bigger decrease in the predicted miles per gallon (mpg) than it is for a car slightly heavier (in green). Addtionally, for a car much heavier, we can see that increasing power can even lead to an increase in the predicted mpg!
+As you can see in the above, the effect of increasing horsepower for the lightest car (in red) is clearly leading to a bigger decrease in the predicted miles per gallon (mpg) than it is for a car slightly heavier (in green). Additionally, for a car much heavier, we can see that increasing power can even lead to an increase in the predicted mpg!
 
 ## Part c) Model 2 with mean-centered variables
 
@@ -82,17 +79,29 @@ model2 <- lm(mpg ~ hp_centered + wt_centered + hp_centered*wt_centered, data = m
 
 # Summary of stats of model2
 summary(model2)
+
+# Extract R-squared values for comparison
+cat("Model 2 R-squared:", summary(model2)$r.squared, "\n")
+cat("Model 2 Adjusted R-squared:", summary(model2)$adj.r.squared, "\n")
 ```
 
 **Comparison of coefficients between Model 1 and Model 2:**
 
 The underlying objective in centering the values taken by hp and wt around their mean is that, now, the hp coefficient represents the effect of horsepower on mpg when weight is at its average value, which is a much more realistic model than model1. Similarly, the wt coefficient represents the effect of weight on mpg when horsepower is at its mean value.
 
-- The **interaction coefficient** remains very close to what it is in model1 (0.027848) against 0.02785 in model1. We can assume they are the same.
+- The **interaction coefficient** remains exactly the same (0.02784815) in both models. This is a key property of mean-centering: it preserves the interaction coefficient.
 - The **main effect coefficients** change significantly:
-  - hp coefficient: -0.12010 (Model 1) vs -0.030508 (Model 2) 
-  - wt coefficient: -8.21662 (Model 1) vs -4.131649 (Model 2) 
-- The **intercept** changes from 49.80842 (Model 1) to 18.898400 (Model 2)
+  - hp coefficient: -0.12010 (Model 1) vs -0.03051 (Model 2) 
+  - wt coefficient: -8.21662 (Model 1) vs -4.13165 (Model 2) 
+- The **intercept** changes from 49.80842 (Model 1) to 18.89840 (Model 2)
+
+**Key insight:** The main effect coefficients in Model 2 represent the marginal effects at the mean values of the other variable. For example, the hp coefficient in Model 2 (-0.03051) is the effect of horsepower when weight equals its mean (3.21725), which can be verified by calculating the marginal effect from Model 1: -0.12010 + 0.02785 × 3.21725 = -0.03051.
+
+**R-squared Analysis for Models 1 and 2:**
+Both models have identical R-squared values (≈ 0.8848) and adjusted R-squared values (≈ 0.8724), which confirms that mean-centering does not change the model's explanatory power. This is expected because:
+- Mean-centering is a linear transformation that preserves the linear relationships
+- The interaction coefficient remains unchanged
+- The model fit is mathematically equivalent, just with different coefficient interpretations
 
 ## Part d) Model 3 with only interaction term
 
@@ -100,6 +109,10 @@ The underlying objective in centering the values taken by hp and wt around their
 # Model 3: mpg ~ hp_centered:wt_centered (only interaction, no main effects)
 model3 <- lm(mpg ~ hp_centered:wt_centered, data = mtcars)
 summary(model3)
+
+# Extract R-squared values for comparison
+cat("Model 3 R-squared:", summary(model3)$r.squared, "\n")
+cat("Model 3 Adjusted R-squared:", summary(model3)$adj.r.squared, "\n")
 ```
 
 **Comparison of coefficients across all three models:**
@@ -110,23 +123,103 @@ summary(model3)
 - **wt_centered:** excluded (forced to 0)  
 - **hp_centered : wt_centered:** 0.01574  
 
+#### R-squared Comparison Across All Models
+
+```{r}
+# Create a comparison table of R-squared values
+r_squared_comparison <- data.frame(
+  Model = c("Model 1", "Model 2", "Model 3"),
+  R_squared = c(summary(model1)$r.squared, summary(model2)$r.squared, summary(model3)$r.squared),
+  Adj_R_squared = c(summary(model1)$adj.r.squared, summary(model2)$adj.r.squared, summary(model3)$adj.r.squared),
+  F_statistic = c(summary(model1)$fstatistic[1], summary(model2)$fstatistic[1], summary(model3)$fstatistic[1]),
+  P_value = c(pf(summary(model1)$fstatistic[1], summary(model1)$fstatistic[2], summary(model1)$fstatistic[3], lower.tail = FALSE),
+              pf(summary(model2)$fstatistic[1], summary(model2)$fstatistic[2], summary(model2)$fstatistic[3], lower.tail = FALSE),
+              pf(summary(model3)$fstatistic[1], summary(model3)$fstatistic[2], summary(model3)$fstatistic[3], lower.tail = FALSE))
+)
+
+print(r_squared_comparison)
+```
+
+**Key R-squared Observations:**
+
+1. **Models 1 and 2 are identical:** Both achieve R² ≈ 0.8848 and adjusted R² ≈ 0.8724, confirming that mean-centering preserves model fit.
+
+2. **Model 3 shows dramatic decline:** R² drops to ≈ 0.0189 (only 1.89% of variance explained), demonstrating the critical importance of including main effects.
+
+3. **Statistical significance:** 
+   - Models 1 and 2: Highly significant (p < 0.001)
+   - Model 3: Not statistically significant (p ≈ 0.454)
+
+4. **Practical interpretation:** The interaction alone explains almost nothing about mpg variation, while the full model (with main effects) explains nearly 88% of the variance.
+
+#### Verification of Our Understanding
+
+```{r}
+# Verification 1: Check that Models 1 and 2 produce identical predictions
+predictions1 <- predict(model1, mtcars)
+predictions2 <- predict(model2, mtcars)
+cat("Are Model 1 and Model 2 predictions identical?", all.equal(predictions1, predictions2), "\n")
+
+# Verification 2: Calculate marginal effects manually from Model 1
+hp_mean <- mean(mtcars$hp)
+wt_mean <- mean(mtcars$wt)
+
+# Marginal effect of hp at mean wt from Model 1
+marginal_hp_model1 <- -0.12010 + 0.02785 * wt_mean
+cat("Marginal effect of hp at mean wt (Model 1):", marginal_hp_model1, "\n")
+cat("hp coefficient in Model 2:", coef(model2)["hp_centered"], "\n")
+cat("Difference:", abs(marginal_hp_model1 - coef(model2)["hp_centered"]), "\n")
+
+# Marginal effect of wt at mean hp from Model 1  
+marginal_wt_model1 <- -8.21662 + 0.02785 * hp_mean
+cat("Marginal effect of wt at mean hp (Model 1):", marginal_wt_model1, "\n")
+cat("wt coefficient in Model 2:", coef(model2)["wt_centered"], "\n")
+cat("Difference:", abs(marginal_wt_model1 - coef(model2)["wt_centered"]), "\n")
+
+# Verification 3: Show that Model 3's poor fit is due to missing main effects
+cat("\nModel 3 explains only", round(summary(model3)$r.squared * 100, 1), "% of variance\n")
+cat("Model 1 explains", round(summary(model1)$r.squared * 100, 1), "% of variance\n")
+cat("Loss from removing main effects:", round((summary(model1)$r.squared - summary(model3)$r.squared) * 100, 1), "percentage points\n")
+```
+
+**This verification proves our understanding:**
+
+1. **Models 1 and 2 are mathematically equivalent:** They produce identical predictions despite different coefficient interpretations.
+
+2. **Model 2 coefficients represent marginal effects at means:** The hp coefficient in Model 2 exactly equals the marginal effect of hp when wt equals its mean, calculated from Model 1.
+
+3. **Main effects are crucial:** Removing them causes an 86+ percentage point drop in R², demonstrating that individual effects of hp and wt are far more important than their interaction alone.
+
 ---
 
 #### Comparison with Models 1 and 2
-- **Interaction coefficient:** The interaction term (≈ 0.01574) is near identical across all three models. This shows that centering or removing main effects does not highly impact the slope of the interaction.  
+- **Interaction coefficient:** The interaction term changes significantly across models:
+  - Model 1: 0.02784815
+  - Model 2: 0.02784815 (identical to Model 1)
+  - Model 3: 0.01573639 (significantly different!)
+  
+  This shows that **removing main effects DOES impact the interaction coefficient**, contrary to what one might expect. This is because the interaction term in Model 3 is forced to capture both the true interaction effect AND compensate for the missing main effects.
+  
 - **Main effects:**  
   - Models 1 and 2 include main effects for hp and wt. In Model 1 these are defined at unrealistic baselines (hp = 0, wt = 0), while in Model 2 they are defined at realistic baselines (mean hp, mean wt).  
-  - Model 3 excludes the main effects entirely, meaning the model assumes hp and wt only affect mpg through their joint interaction. This is an oversimplification that costs the R-squared value to drop drastically, bearly reaching 2% (i.e. 2% of the variations in mpg can be explained by the joined interaction of horsepower and weight). 
+  - Model 3 excludes the main effects entirely, meaning the model assumes hp and wt only affect mpg through their joint interaction. This is an oversimplification that costs the R-squared value to drop drastically, barely reaching 2% (i.e. 2% of the variations in mpg can be explained by the joint interaction of horsepower and weight). 
   
 - **Intercept:**  
   - Model 1: 49.80842 (predicted mpg when hp = 0 and wt = 0, not meaningful).
-  - Model 2: 18.898400 (predicted mpg at mean hp and mean wt, interpretable).
+  - Model 2: 18.89840 (predicted mpg at mean hp and mean wt, interpretable).
   - Model 3: 19.41692 (close to Model 2, but adjusted upward because the main effects are missing).  
 
 ---
 
 #### Interpretation
-Model 3 preserves the interaction effect but ignores the independent contributions of horsepower and weight. While its intercept represents predicted mpg at average hp and wt (similar to Model 2), excluding main effects makes it a weaker and less realistic specification. Models 1 and 2 therefore provide more accurate and interpretable insights into how hp and wt affect mpg, both individually and jointly. In this particular exercise, model 1 and 2 are the right choice since their relatively higher complexity is easily managed by modern computers and performs best on training data, as demonstrated by their adjusted R-squared value of 0.8724, which expresses that 87% of the variations in the miles per gallon can be explained by the combined effects of horsepower, weight, and their interaction.
+Model 3 preserves the interaction effect but ignores the independent contributions of horsepower and weight. While its intercept represents predicted mpg at average hp and wt (similar to Model 2), excluding main effects makes it a weaker and less realistic specification. Importantly, the interaction coefficient in Model 3 (0.01574) is different from Models 1 and 2 (0.02785), indicating that the interaction term is absorbing some of the effect that should be attributed to the main effects.**
+
+**R-squared Analysis Summary:**
+- **Models 1 and 2:** Both achieve excellent fit with R² ≈ 0.885 and adjusted R² ≈ 0.872, explaining nearly 88% of mpg variance
+- **Model 3:** Dramatically poor fit with R² ≈ 0.019, explaining only 1.9% of variance
+- **Statistical significance:** Models 1 and 2 are highly significant (p < 0.001), while Model 3 is not significant (p ≈ 0.454)
+
+**Conclusion:** Models 1 and 2 provide more accurate and interpretable insights into how hp and wt affect mpg, both individually and jointly. The R-squared analysis clearly demonstrates that main effects are essential for understanding mpg variation, while the interaction alone is insufficient. Model 2 is particularly valuable because it provides interpretable coefficients representing effects at realistic baseline values (mean hp and wt), making it the preferred choice for practical applications.
 
 ## Part e) Mathematical explanation
 
@@ -153,10 +246,15 @@ Rearranging:
 mpg = β₀* - β₁*hp̄ - β₂*wt̄ + β₃*hp̄×wt̄ + β₁*hp + β₂*wt + β₃*hp×wt - β₃*hp̄×wt - β₃*hp×wt̄
 
 Comparing coefficients with Model 1:
-- β₁ = β₁* (hp coefficient unchanged)
-- β₂ = β₂* (wt coefficient unchanged)  
+- β₁ = β₁* - β₃*hp̄ (hp coefficient changes due to interaction with mean weight)
+- β₂ = β₂* - β₃*wt̄ (wt coefficient changes due to interaction with mean horsepower)  
 - β₃ = β₃* (interaction coefficient unchanged)
 - β₀ = β₀* - β₁*hp̄ - β₂*wt̄ + β₃*hp̄×wt̄ (intercept changes)
+
+**This explains why the main effect coefficients change in Model 2:**
+- The hp coefficient in Model 2 represents the marginal effect of hp when wt = wt̄ (mean weight)
+- The wt coefficient in Model 2 represents the marginal effect of wt when hp = hp̄ (mean horsepower)
+- These are different from the coefficients in Model 1, which represent effects when the other variable equals 0
 
 **For Model 3 (only interaction):**
 mpg = β₀** + β₃**(hp* × wt*)
@@ -168,8 +266,9 @@ This model forces the main effects to be zero, so:
 - β₀** = β₀* (intercept at mean values)
 
 This explains why:
-1. The interaction coefficient remains identical across all models
-2. The main effect coefficients are the same in Models 1 and 2
+1. The interaction coefficient remains identical between Models 1 and 2 (but changes in Model 3)
+2. The main effect coefficients change between Models 1 and 2 due to the interaction with mean values
 3. The intercept changes between Models 1 and 2 due to the centering
-4. Model 3 has the same intercept as Model 2 but lacks the main effects
+4. Model 3 has a different interaction coefficient because it must compensate for missing main effects
+5. Model 3's intercept is close to Model 2's but slightly different due to the missing main effects
 
