@@ -1,25 +1,21 @@
 ---
-title: "laptops"
-author: "Hindy Rossignol"
+title: "Problem 4"
+author: "Hindy Rossignol, Riya Parikh, Mrugank Pednekar, Ioannis Panagiotopoulos"
 date: "2025-09-11"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE) # 
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
-<!-- ```{r}
-
-# Import packages
-
-install.packages("readr")
-install.packages("dplyr")
-``` -->
 ```{r}
 library(readr)
 library(dplyr)
+library(ggplot2)
 ```
+
+## 2. Load Data
 
 ```{r}
 # NOTE: Data files must be in a 'Data' subdirectory relative to this R Markdown file
@@ -38,30 +34,40 @@ df_train <- read_csv("Data/laptop_train.csv")
 df_test <- read_csv("Data/laptop_test.csv")
 ```
 
+## 3. Data Exploration
+
 ```{r}
-head(df_train)    
+head(df_train)
+```
+
+```{r}
 head(df_test)
 ```
+
 ```{r}
 # We want to know the dimensions of our dataset. 
 dim(df_train) # there are 9 features and 665 observations
-dim(df_test) # there are 9 features and 280 observations
+dim(df_test)  # there are 9 features and 280 observations
 ```
 
 ```{r}
-str(df_train)  # structure (variable types, first few entries)
-str(df_test)
+str(df_train) # structure (variable types, first few entries)
+str(df_test)  # structure (variable types, first few entries)
 ```
 
 ```{r}
-summary(df_train)        # summary statistics by column
-summary(df_test)
+summary(df_train) # summary statistics by column
+summary(df_test)  # summary statistics by column
 ```
 
 ```{r}
 colSums(is.na(df_train))   # number of NAs per column
 anyNA(df_train)            # check if dataset has any missing values
 ```
+
+## 4. Create Binary Target Variable
+
+We are creating a new binary column high for both the test and train dataframes which is 1 if the price is 500 Euros or higher, and 0 otherwise If a laptop's price is ≥ 500 Euros, it gets high = 1 (expensive). If it's ≤ 499.99 Euros, it gets high = 0 (not expensive).
 
 ```{r}
 # Add binary column 'high' to training and test datasets
@@ -79,6 +85,55 @@ prop.table(table(df_train$high))
 table(df_test$high)
 prop.table(table(df_test$high))
 ```
+
+The following plot shows the count of laptops in the training set that are classified as high price (1) or low price (0). The bars are colored steel blue for better visualization.
+
+```{r}
+# Bar plot of high/low price distribution in training set
+ggplot(df_train, aes(factor(high))) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Distribution of High vs Low Price (Train Set)",
+       x = "High Price (1 = Yes, 0 = No)", y = "Count")
+```
+
+We do the same for the test set.
+
+```{r}
+# Bar plot of high/low price distribution in test set
+ggplot(df_test, aes(factor(high))) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Distribution of High vs Low Price (Test Set)",
+       x = "High Price (1 = Yes, 0 = No)", y = "Count")
+```
+
+From the above plots, we can see that the classes are inbalanced, with more high price laptops (1) than low price laptops (0).
+
+The following plot shows the proportion of high price (1) and low price (0) laptops for each company in the training set. Each bar is stacked and filled by the 'high' variable: different colors for high (1) and low (0).
+
+```{r}
+# Bar plot: Company vs High/Low Price in training set
+
+ggplot(df_train, aes(x = Company, fill = factor(high))) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of High/Low Price by Company in train set", y = "Proportion", fill = "High") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+We are doing the same for the test set.
+
+```{r}
+# Bar plot: Company vs High/Low in test set
+ggplot(df_test, aes(x = Company, fill = factor(high))) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of High/Low Price by Company in test set", y = "Proportion", fill = "High") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Based on the above plots, we can see whether some manufacturers (Dell, HP, Lenovo, Asus) are more likely to sell high-priced laptops. It just gives us an intuition before we build our model.
+
+## 5. Logistic Regression Model
+
+### (a) Build Model
 
 ```{r}
 # Build logistic regression model
@@ -98,6 +153,8 @@ logistic_model <- glm(high ~ InventoryID + Company + TypeName + GPU + Screen +
 summary(logistic_model)
 ```
 
+### (b) Which variables are significant in predicting the probability of a price's being high?
+
 ```{r}
 # Which variables are significant in predicting the probability of a
 # price's being high? Variables with p-values less than 0.05 are considered
@@ -105,6 +162,222 @@ summary(logistic_model)
 significant_vars <- summary(logistic_model)$coefficients
 significant_vars[significant_vars[,4] < 0.05, ]
 ```
+
+#### Interpretation of Results
+
+**Significant predictors (p \< 0.05):** - CompanyDell (p = 0.020) → Dell laptops are more likely to be high-priced vs. Asus.\
+- CompanyHP (p = 0.018) → HP laptops are also more likely to be high-priced.\
+- GPUNvidia (p \< 0.001) → Nvidia GPUs strongly increase the likelihood of high-priced laptops.\
+- Screen (p \< 0.001) → Larger screen size reduces the probability of being high-priced.\
+- Memory (p \< 0.001) → More RAM strongly increases the likelihood of being high-priced.
+
+**Not significant predictors (p ≥ 0.05):** - Weight (p = 0.085)\
+- Rating (p = 0.065)\
+- InventoryID\
+- CompanyLenovo\
+- TypeName\
+- GPUIntel
+
+**Interpretation:**
+
+Practical factors influencing price:\
+- More RAM (+), Nvidia GPU (+), Dell/HP branding (+) increase odds of being expensive.\
+- Larger screens (-) reduce odds (perhaps because gaming/ultrabooks with smaller but more powerful components are pricey).
+
+Baseline/reference categories:\
+- Company baseline = Asus.\
+- Type baseline = Gaming.\
+- GPU baseline = AMD.
+
+So, coefficients are relative to these baselines.
+
+#### Visualize Coefficients (optional)
+
+```{r}
+# Visualize model coefficients (excluding intercept)
+# This horizontal bar plot shows the estimated coefficients from the logistic regression model (excluding the intercept).
+# Each bar represents a variable, and the length and direction indicate the effect size and sign.
+# Bars are colored dark orange for better visibility.
+coefs_df <- as.data.frame(summary(logistic_model)$coefficients)
+coefs_df$Variable <- rownames(coefs_df)
+coefs_df <- coefs_df[coefs_df$Variable != "(Intercept)", ]
+
+ggplot(coefs_df, aes(x = reorder(Variable, Estimate), y = Estimate)) +
+  geom_bar(stat = "identity", fill = "darkorange") +
+  coord_flip() +
+  labs(title = "Logistic Regression Coefficients", x = "Variable", y = "Estimate")
+```
+
+### (c) Comparison with the linear regression model
+
+#### Logistic Regression Model
+
+We give a short summary of the logistic regression model here: - Significant predictors (p \< 0.05) included: **Company (Dell, HP), GPU (Nvidia), Screen size, and Memory**.\
+- Results suggest that **Dell/HP branding, more RAM, and Nvidia GPUs** increase the odds of a laptop being high-priced, while **larger screen sizes reduce** those odds.\
+- Baseline categories are: **Asus (Company), Gaming (TypeName), AMD (GPU)**. Coefficients for other categories are interpreted relative to these baselines.
+
+#### Linear Regression Model
+
+The linear regression model directly predicts **laptop price** as a continuous outcome.
+
+**Key results:**\
+- **Screen size (–120.55, p \< 0.001):** Larger screens are associated with lower prices.\
+- **Memory (+87.40, p \< 0.001):** Each additional GB of RAM increases price on average by about €87.\
+- **Weight (+268.91, p \< 0.001):** Heavier laptops tend to be more expensive.\
+- **TypeNameUltrabook (+429.31, p \< 0.001):** Ultrabooks are significantly more expensive than Gaming laptops.\
+- **GPUIntel (+156.13, p \< 0.001) and GPUNvidia (+182.92, p \< 0.001):** Both Intel and Nvidia GPUs increase price compared to AMD GPUs.\
+- **TypeNameNotebook (–49.82, p = 0.398):** Not statistically significant.
+
+#### Comparison and Insights
+
+-   Both models consistently highlight **Memory** and **GPU type** as important price drivers.\
+-   Logistic regression provides a binary view (is the laptop high-priced or not), while linear regression quantifies *how much* each factor contributes to price in Euros.\
+-   Linear regression suggests **Ultrabook type** and **Weight** are also strong price determinants, which were weaker or insignificant in the logistic model.\
+-   The negative effect of **Screen size** appears in both models, reinforcing that larger screens may not always mean higher-priced laptops (likely due to mid-range notebooks with larger but less powerful builds).
+
+### (d) Interpretation of Significant Variables
+
+| Variable | Effect on Probability of Being High-Priced | Justification |
+|------------------|-----------------------------------|--------------------|
+| **CompanyDell** | Increases → Dell laptops are more likely to be high-priced compared to Asus. | Dell often offers premium business and gaming models at higher prices. |
+| **CompanyHP** | Increases → HP laptops are more likely to be high-priced compared to Asus. | HP has strong enterprise and premium product lines. |
+| **GPUNvidia** | Increases → Laptops with Nvidia GPUs are more likely to be high-priced compared to AMD. | Nvidia GPUs are powerful and common in high-end gaming/professional laptops. |
+| **Screen** | Decreases → Larger screen size reduces the likelihood of being high-priced. | Counterintuitive, but many premium laptops (e.g., gaming/ultrabooks) favor performance/portability over large displays. |
+| **Memory** | Increases → More RAM increases the likelihood of being high-priced. | Higher RAM is directly linked to better performance. |
+
+### (e) Comparison of coefficient signs between models
+
+When comparing the logistic regression (high-priced vs. low-priced) with the linear regression (continuous price), most predictors show consistent directions of effect, while a few differ.
+
+**Same sign in both models:** - **Memory:** Positive in both → more RAM increases the likelihood of being high-priced and also raises the price level in Euros.\
+- **GPUNvidia:** Positive in both → Nvidia GPUs are associated with higher odds of being expensive and increase absolute price.\
+- **CompanyDell / CompanyHP:** Positive in logistic regression; not included in the linear model specification, so no direct comparison possible.\
+- **Weight:** Positive in both → heavier laptops are more likely to be expensive and also priced higher on average.\
+- **Screen:** Negative in both → larger screens reduce odds of being high-priced and are associated with lower prices.
+
+**Different signs between models:** - **GPUIntel:** Negative in logistic regression (though not significant) but positive in linear regression → Intel GPUs are linked with slightly lower odds of being in the high-price group, yet contribute positively to price as a continuous outcome.\
+- **TypeNameUltrabook:** Negative in logistic regression (not significant) but strongly positive in linear regression → Ultrabooks are not clearly more likely to cross the 500 price threshold, but when they do, their absolute prices are much higher.\
+- **TypeNameNotebook:** Negative in both, but only significant in neither, so practical impact is limited.
+
+#### Key takeaway
+
+-   The **consistent predictors across both models** are **Memory, Nvidia GPUs, Weight, and Screen size**, all showing the same directional effect.\
+-   The **main divergences** are for **Intel GPUs and Ultrabook type**, where logistic and linear models disagree. This suggests that these features influence *absolute pricing levels* but may not cleanly separate laptops into high- vs. low-price categories.
+
+### (f) Predicting for a Specific Laptop
+
+We want to predict the probability that a given laptop is **high-priced** (≥ 500 Euros).\
+The logistic regression model gives this probability using the logistic function:
+
+$$
+P(\text{high} = 1) = \frac{1}{1 + e^{-(\beta_0 + \beta_1 X_1 + \beta_2 X_2 + \dots + \beta_k X_k)}}
+$$
+
+#### Given Laptop Characteristics
+
+-   InventoryID = 4096\
+-   Company = Lenovo\
+-   TypeName = Ultrabook\
+-   GPU = Intel\
+-   Screen = 8\
+-   Memory = 8\
+-   Weight = 4.2\
+-   Rating = 7
+
+#### Step 1: Extract Coefficients
+
+From the logistic regression model:
+
+-   (Intercept) = 26.47131\
+-   InventoryID = 0.0005577\
+-   CompanyLenovo = -0.3677\
+-   TypeNameUltrabook = -13.25963\
+-   GPUIntel = -0.1077\
+-   Screen = -1.1981\
+-   Memory = 0.7337\
+-   Weight = 1.5602\
+-   Rating = -0.0909
+
+(Other coefficients are not included since they do not apply to this laptop’s profile.)
+
+#### Step 2: Compute the Logit (Z)
+
+$$
+Z = \beta_0 + \beta_1(\text{InventoryID}) + \beta_{Lenovo} + \beta_{Ultrabook} + \beta_{Intel} 
++ \beta_{Screen}(\text{Screen}) + \beta_{Memory}(\text{Memory}) + \beta_{Weight}(\text{Weight}) + \beta_{Rating}(\text{Rating})
+$$
+
+Substituting the values:
+
+$$
+Z = 26.47131 + (0.0005577 \times 4096) - 0.3677 - 13.25963 - 0.1077 
++ (-1.1981 \times 8) + (0.7337 \times 8) + (1.5602 \times 4.2) + (-0.0909 \times 7)
+$$
+
+$$
+Z \approx 22.9
+$$
+
+#### Step 3: Apply Logistic Function
+
+$$
+P(\text{high} = 1) = \frac{1}{1 + e^{-Z}} = \frac{1}{1 + e^{-22.9}} \approx 1
+$$
+
+#### Final Prediction
+
+-   **Manual calculation:** Probability ≈ **1.0000**\
+-   **Using `predict()` in R:** Probability ≈ **1.0000**
+
+#### Explanation of Implementation
+
+1.  Created a new observation (`new_laptop`) with the given laptop's features.\
+2.  Extracted coefficients from the fitted logistic regression model.\
+3.  Calculated the logit (Z) by plugging in the observation's values.\
+4.  Applied the logistic function to transform Z into a probability.\
+5.  Validated with R's `predict()` function, which confirmed the manual result.
+
+The model predicts with near certainty that this Lenovo Ultrabook would be **high-priced**.
+
+```{r}
+# Create a new observation
+new_laptop <- data.frame(
+  InventoryID = 4096,
+  Company = "Lenovo",
+  TypeName = "Ultrabook",
+  GPU = "Intel",
+  Screen = 8,
+  Memory = 8,
+  Weight = 4.2,
+  Rating = 7
+)
+
+# Show the equation for probability:
+# pr(high = 1) = 1 / (1 + exp(-(B0 + B1*InventoryID + ... + B7*Rating)))
+coefs <- coef(logistic_model)
+coefs
+
+# Calculate logit (Z) manually
+Z <- coefs["(Intercept)"] +
+     coefs["InventoryID"] * new_laptop$InventoryID +
+     coefs[paste0("Company", new_laptop$Company)] +
+     coefs[paste0("TypeName", new_laptop$TypeName)] +
+     coefs[paste0("GPU", new_laptop$GPU)] +
+     coefs["Screen"] * new_laptop$Screen +
+     coefs["Memory"] * new_laptop$Memory +
+     coefs["Weight"] * new_laptop$Weight +
+     coefs["Rating"] * new_laptop$Rating
+
+# Calculate probability
+prob <- 1 / (1 + exp(-Z))
+print(paste("Predicted probability (manual):", round(prob, 4)))
+
+# Or use predict()
+prob_predict <- predict(logistic_model, newdata = new_laptop, type = "response")
+print(paste("Predicted probability (predict):", round(prob_predict, 4)))
+```
+
+### (g) Model Evaluation on Test Set
 
 ```{r}
 # Generate predictions on test set
@@ -123,4 +396,54 @@ conf_matrix <- table(Predicted = predicted_classes, Actual = df_test$high)
 print("Confusion Matrix:")
 print(conf_matrix)
 print(paste("Accuracy:", round(accuracy * 100, 2), "%"))
+```
+
+We applied the logistic regression model to the **test dataset** and evaluated performance using a **0.5 probability cutoff**.
+
+-   **True Negatives (TN):** 29\
+-   **False Negatives (FN):** 16\
+-   **False Positives (FP):** 24\
+-   **True Positives (TP):** 211
+
+#### Accuracy
+
+$$
+\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}
+$$
+
+$$
+\text{Accuracy} = \frac{211 + 29}{211 + 29 + 24 + 16} = \frac{240}{280} \approx 85.71\%
+$$
+
+#### Interpretation
+
+-   The model achieves an **accuracy of 85.71%** on the test dataset.\
+-   Most high-priced laptops (class = 1) were correctly identified (211 true positives), showing the model is strong at predicting expensive laptops.\
+-   Some errors occur in predicting low-priced laptops, as seen in the 24 false positives and 16 false negatives.
+
+#### Visualization
+
+The following heatmap provides a visual representation of the confusion matrix for the test set predictions.
+
+```{r}
+# Visualize confusion matrix as heatmap
+# This heatmap shows the confusion matrix for the test set predictions.
+# The fill color (from sky blue to navy) indicates the number of laptops in each cell (Predicted vs Actual).
+# The white text shows the count in each cell.
+library(reshape2)
+cm_df <- as.data.frame(conf_matrix)
+colnames(cm_df) <- c("Predicted", "Actual", "Freq")
+cm_df$Predicted <- factor(cm_df$Predicted, levels = c(1, 0))
+cm_df$Actual <- factor(cm_df$Actual, levels = c(0, 1))
+
+ggplot(cm_df, aes(x = Actual, y = Predicted, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), color = "white", size = 8) +
+  scale_fill_gradient(low = "skyblue", high = "navy") +
+  labs(
+    title = "Confusion Matrix (Test Set)",
+    x = "Actual",
+    y = "Predicted"
+  ) +
+  scale_x_discrete(position = "top") # Put Actual labels on top to match table
 ```
