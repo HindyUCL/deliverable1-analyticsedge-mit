@@ -1,6 +1,15 @@
 ---
 title: "Problem_3"
-output: html_notebook
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+  html_notebook: default
+header-includes:
+  - \usepackage{fvextra}
+  - \fvset{breaklines=true, breakanywhere=true} % wrap in all FancyVerb blocks
+  - \DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines,breakanywhere}
 ---
 ```{r}
 library(ggplot2)
@@ -14,8 +23,10 @@ data(mtcars)
 head(mtcars)
 ```
 
+```{r}
+summary(mtcars)
+```
 ## Part a) Fit Model 1 and show summary
-
 
 ```{r}
 # Model 1: mpg ~ hp + wt + hp*wt
@@ -89,7 +100,7 @@ cat("Model 2 Adjusted R-squared:", summary(model2)$adj.r.squared, "\n")
 
 The underlying objective in centering the values taken by hp and wt around their mean is that, now, the hp coefficient represents the effect of horsepower on mpg when weight is at its average value, which is a much more realistic model than model1. Similarly, the wt coefficient represents the effect of weight on mpg when horsepower is at its mean value.
 
-- The **interaction coefficient** remains exactly the same (0.02784815) in both models. This is a key property of mean-centering: it preserves the interaction coefficient.
+- The **interaction coefficient** remains exactly the same (0.02784815) in both models. This is a key property of mean-centering: it preserves the interaction coefficient (see question e).
 - The **main effect coefficients** change significantly:
   - hp coefficient: -0.12010 (Model 1) vs -0.03051 (Model 2) 
   - wt coefficient: -8.21662 (Model 1) vs -4.13165 (Model 2) 
@@ -223,52 +234,4 @@ Model 3 preserves the interaction effect but ignores the independent contributio
 
 ## Part e) Mathematical explanation
 
-Let's expand the expressions algebraically to understand why the coefficients behave this way.
-
-**For Model 1:**
-mpg = β₀ + β₁(hp) + β₂(wt) + β₃(hp × wt)
-
-**For Model 2 with mean-centered variables:**
-hp* = hp - hp̄ and wt* = wt - wt̄
-
-mpg = β₀* + β₁*(hp*) + β₂*(wt*) + β₃*(hp* × wt*)
-
-Substituting the mean-centered variables:
-mpg = β₀* + β₁*(hp - hp̄) + β₂*(wt - wt̄) + β₃*((hp - hp̄) × (wt - wt̄))
-
-Expanding the interaction term:
-(hp - hp̄) × (wt - wt̄) = hp×wt - hp̄×wt - hp×wt̄ + hp̄×wt̄
-
-So:
-mpg = β₀* + β₁*(hp - hp̄) + β₂*(wt - wt̄) + β₃*(hp×wt - hp̄×wt - hp×wt̄ + hp̄×wt̄)
-
-Rearranging:
-mpg = β₀* - β₁*hp̄ - β₂*wt̄ + β₃*hp̄×wt̄ + β₁*hp + β₂*wt + β₃*hp×wt - β₃*hp̄×wt - β₃*hp×wt̄
-
-Comparing coefficients with Model 1:
-- β₁ = β₁* - β₃*hp̄ (hp coefficient changes due to interaction with mean weight)
-- β₂ = β₂* - β₃*wt̄ (wt coefficient changes due to interaction with mean horsepower)  
-- β₃ = β₃* (interaction coefficient unchanged)
-- β₀ = β₀* - β₁*hp̄ - β₂*wt̄ + β₃*hp̄×wt̄ (intercept changes)
-
-**This explains why the main effect coefficients change in Model 2:**
-- The hp coefficient in Model 2 represents the marginal effect of hp when wt = wt̄ (mean weight)
-- The wt coefficient in Model 2 represents the marginal effect of wt when hp = hp̄ (mean horsepower)
-- These are different from the coefficients in Model 1, which represent effects when the other variable equals 0
-
-**For Model 3 (only interaction):**
-mpg = β₀** + β₃**(hp* × wt*)
-
-This model forces the main effects to be zero, so:
-- β₁** = 0 (no hp main effect)
-- β₂** = 0 (no wt main effect)
-- β₃** = β₃ (interaction coefficient remains the same)
-- β₀** = β₀* (intercept at mean values)
-
-This explains why:
-1. The interaction coefficient remains identical between Models 1 and 2 (but changes in Model 3)
-2. The main effect coefficients change between Models 1 and 2 due to the interaction with mean values
-3. The intercept changes between Models 1 and 2 due to the centering
-4. Model 3 has a different interaction coefficient because it must compensate for missing main effects
-5. Model 3's intercept is close to Model 2's but slightly different due to the missing main effects
-
+See the following handwritten explanations.
