@@ -1,0 +1,191 @@
+---
+title: "Question 1"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+>Question1.
+> (A)
+
+> We first get an insight into the data by looking at our base model including all the features, looking at the corelation matrix, OOS R^2, and identifying which features are significant, highly corelated, etc.
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+
+train <- read.csv("laptop_train.csv")
+test  <- read.csv("laptop_test.csv")
+
+train$Company  <- factor(train$Company)
+train$TypeName <- factor(train$TypeName)
+train$GPU      <- factor(train$GPU)
+
+# These should stay numeric
+num_vars <- c("Screen","Memory","Weight","Rating","Price")
+train[num_vars] <- lapply(train[num_vars], as.numeric)
+
+# correlation matrix
+cor(train[, num_vars], use = "complete.obs")
+
+# Base Model
+model1 <- lm(Price ~ InventoryID + Screen + Memory + Weight + Rating + Company + TypeName + GPU, data = train)
+summary(model1)
+
+library(olsrr)
+ols_step_backward_p(model1, p_val = 0.05, progress = TRUE)
+
+# out-of-sample R² for base model
+pred_test <- predict(model1, newdata = test)
+sse <- sum((test$Price - pred_test)^2)
+sst <- sum((test$Price - mean(test$Price))^2)
+R2_out <- 1 - sse/sst
+R2_out
+```
+
+> Looking at the correlation matrix, I observed that Screen and Weight are highly correlated (0.81). This high collinearity inflates variances of coefficient estimates and makes interpretation unstable. Indeed, in the full regression output, both Screen and Weight appeared significant, but their strong correlation makes it difficult to separate their individual contributions. To avoid redundancy and multicollinearity, I decided to drop Weight and retain Screen, which has a closer correlation to our dependent variable (price), low p-value (statistically significant), and which is more directly interpretable as a feature consumers see when buying laptops.
+> Next, I examined the coefficient for InventoryID. This variable is simply an internal stock identifier and has no managerial meaning for pricing. Its coefficient was very small (0.067), with a p-value of 0.406, confirming it was not statistically significant. Including InventoryID risks overfitting without adding explanatory value. Therefore, I chose to exclude InventoryID from the second model.
+
+
+```{r}
+# 2nd Model to compare with
+model2 <- lm(Price ~ Screen + Memory + Rating + Company + TypeName + GPU, data = train)
+summary(model2)
+
+# out-of-sample R² for model2
+pred_test <- predict(model2, newdata = test)
+sse <- sum((test$Price - pred_test)^2)
+sst <- sum((test$Price - mean(test$Price))^2)
+R2_out <- 1 - sse/sst
+R2_out
+```
+> Here we notice that our OOS R^2 value and Multiple R-squared values have dropped. Although removing InventoryID and Weight reduces the OOS R^2 of our model (from 0.5506981 to 0.5216836), InventoryID was removed for the above mentioned reasons as it was not significant and also has no managerial insight or impact on the model. However, removing Weight was a tradeoff between predictive power and interpretability given that it is highly corelated with Screen. If our emphasis was purely on predictive power, one could make a case to include it in the model.
+
+```{r}
+# 3rd Model to compare with
+model3 <- lm(Price ~ Screen + Memory + Company + TypeName + GPU, data = train)
+summary(model3)
+
+# out-of-sample R² for model3
+pred_test <- predict(model3, newdata = test)
+sse <- sum((test$Price - pred_test)^2)
+sst <- sum((test$Price - mean(test$Price))^2)
+R2_out <- 1 - sse/sst
+R2_out
+```
+> Here I noticed that in the 3rd model, removing rating improves our OOS R^2 but worsens our Multiple R-squared. But I still chose to include it as it remains statistically significant in our model and
+also provides managerial impact and is intuitively a factor that consumers consider when thinking about price.
+
+> After considering the models, I decided to go ahead with Model2 (i.e dropping InventoryID and Weight, but not dropping Rating) as this configuration provides much more interpretability at a
+slightly low prediction power. It's important to know the requirements of our client so we can decide the tradeoff between predictive power and explainability/managerial sense.
+
+```{r}
+
+model2 <- lm(Price ~ Screen + Memory + Rating + Company + TypeName + GPU, data = train)
+summary(model2)
+
+```
+
+> (B)
+
+>In the final model, the effects of Screen, Memory, Company, Rating, Ultrabook type, and GPU are managerially sensible,
+as they align with expectations that screen size, RAM, premium designs, brand value, GPUs have a strong impact on laptop prices.
+However, the negative effect of Screen size and Rating seems to be conterintuitive. So it is imperative to investigate those
+features further in depth and look carefully at the feature data provided. But the other variables included do follow
+expectations based on their estimates and their impact on price.
+
+> (C)
+
+>Based on the model, HP has the highest effect on laptop price adding 175.313 more than Asus holding other factors constant, commanding the largest premium over the other brands.
+Even though Lenovo's coefficients are the lowest among the listed coefficients, one can argue that Asus has the smallest effect, since it is the baseline and all other manufacturers have higher estimated coefficients. While Lenovo’s effect is positive (60.894), it is not statistically significant, which suggests Lenovo laptops are priced similarly to Asus on average.
+
+
+> (D)
+
+```{r}
+pred_test <- predict(model2, newdata = test)
+sse <- sum((test$Price - pred_test)^2)
+sst <- sum((test$Price - mean(test$Price))^2)
+R2_out <- 1 - sse/sst
+R2_out  # out-of-sample R²
+
+```
+
+>Interpretation: This means that when predicting laptop prices on unseen test data,the model explains about 52.16836% of the variation in prices compared to simply predicting the mean price for all laptops.
+
+> Formally, out-of-sample R² is defined as R² = 1 - (SSE/SST),
+where SSE is the sum of squared prediction errors on the test set and SST is the total sum of squared deviations of the test set prices from their mean. An out-of-sample R² of 0.5216836 indicates that 
+the model explains 52.16836% of the variation in laptop prices in the test data, compared to a baseline model that always predicts the average price.
+
+
+> (E)
+
+```{r}
+newlap <- data.frame(
+  InventoryID = 950,
+  Screen = 15.6,
+  Memory = 6,
+  Weight = 3,
+  Rating = 8,
+  Company = factor("Asus", levels = levels(train$Company)),
+  TypeName = factor("Ultrabook", levels = levels(train$TypeName)),
+  GPU = factor("Intel", levels = levels(train$GPU))
+)
+
+# Prediction with prediction interval (includes error variance)
+pred <- predict(model2, newdata = newlap, interval = "prediction", level = 0.95)
+pred
+
+p <- predict(model2, newdata = newlap, se.fit = TRUE)
+sigma2 <- summary(model2)$sigma^2
+se_pred <- sqrt(p$se.fit^2 + sigma2)
+df <- model2$df.residual
+
+t_stat <- (1100 - p$fit) / se_pred
+prob_gt_1100 <- 1 - pt(t_stat, df = df)
+prob_gt_1100
+```
+
+> For this laptop, the model predicts an average price of 1,058.133 euros, with a 95% prediction interval ranging from 371.3338 euros to 1,744.931 euros. The probability that the actual price exceeds €1,100 is 45.23782%. This calculation is based on the assumptions that regression errors are normally distributed (so the t-distribution approximation for the probability is valid), homoscedastic, and independent, and that the model is correctly specified.
+
+
+> (F)
+
+```{r}
+model_mem_gpu <- lm(Price ~ Screen + Memory + Rating + TypeName + Company +
+                      GPU + Memory:GPU, data = train)
+summary(model_mem_gpu)
+
+pred_test <- predict(model_mem_gpu, newdata = test)
+sse <- sum((test$Price - pred_test)^2)
+sst <- sum((test$Price - mean(test$Price))^2)
+R2_out <- 1 - sse/sst
+R2_out  # out-of-sample R²
+```
+
+> The interaction terms show that the effect of Memory depends on the GPU type installed. For AMD laptops, each extra unit of memory adds about 60.243 euros to price. For Intel and Nvidia laptops, the memory premium is much higher, about 93.097 euros and 100.199 euros per memory unit, respectively. This suggests that additional RAM is valued more when paired with stronger GPUs. Compared to the model in part (a), this specification highlights brand-technology complementarities, and shows that consumers value memory more when paired with GPUs, though overall model fit (adjusted R²) is slightly lower.
+When I added the Memory × GPU interaction, the adjusted R² increased slightly (0.639 to 0.644), but the out-of-sample R² decreased marginally (0.522 to 0.518) which suggests no predictive gain, but the model provides richer interpretation: the price premium for additional RAM depends on GPU type.
+
+
+> (G)
+
+```{r}
+train$Company  <- factor(train$Company,  levels = c("Asus","Dell","HP","Lenovo"))  
+train$TypeName <- factor(train$TypeName, levels = c("Gaming","Notebook","Ultrabook"))
+train$GPU      <- factor(train$GPU,      levels = c("AMD","Intel","Nvidia"))
+
+# Model with GPU × Company interaction
+model_gpu_company <- lm(
+  Price ~ Screen + Memory + Rating + TypeName + GPU + Company + GPU:Company,
+  data = train
+)
+summary(model_gpu_company)
+
+pred_test <- predict(model_gpu_company, newdata = test)
+sse <- sum((test$Price - pred_test)^2)
+sst <- sum((test$Price - mean(test$Price))^2)
+R2_out <- 1 - sse/sst
+R2_out  # out-of-sample R²
+```
+
+> The GPU * Company interaction terms show that the price impact of GPUs varies by manufacturer. For Asus (baseline), Intel and Nvidia GPUs do not add value, but for Dell, HP, and Lenovo, Intel GPUs command strong positive premiums of about 394-491 euros. Nvidia GPUs also add large premiums at Dell but not at HP or Lenovo. Compared to the model in part (a), this specification provides richer insight into brand-specific GPU pricing and slightly improves both adjusted R² (0.639 to 0.654) and out-of-sample R² (0.522 to 0.533).
