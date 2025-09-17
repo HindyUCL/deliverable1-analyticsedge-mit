@@ -195,18 +195,22 @@ significant_vars[significant_vars[,4] < 0.05, ]
 
 The p-value is the probability of observing a sample with results as extreme as, or more extreme than, the observed data, assuming the null hypothesis is true. A lower p-value indicates stronger evidence against the null hypothesis. In this analysis, we use a threshold of 0.05, meaning variables with p-values below this level are considered statistically significant.
 
-**Significant predictors (p \< 0.05):** - CompanyDell (p = 0.020) → Dell laptops are more likely to be high-priced vs. Asus.\
-- CompanyHP (p = 0.018) → HP laptops are also more likely to be high-priced.\
-- GPUNvidia (p \< 0.001) → Nvidia GPUs strongly increase the likelihood of high-priced laptops.\
-- Screen (p \< 0.001) → Larger screen size reduces the probability of being high-priced.\
-- Memory (p \< 0.001) → More RAM strongly increases the likelihood of being high-priced.
+**Significant predictors (p \< 0.05):**
 
-**Not significant predictors (p ≥ 0.05):** - Weight (p = 0.085)\
-- Rating (p = 0.065)\
-- InventoryID\
-- CompanyLenovo\
-- TypeName\
-- GPUIntel
+-   CompanyDell (p = 0.020) → Dell laptops are more likely to be high-priced vs. Asus.\
+-   CompanyHP (p = 0.018) → HP laptops are also more likely to be high-priced.\
+-   GPUNvidia (p \< 0.001) → Nvidia GPUs strongly increase the likelihood of high-priced laptops.\
+-   Screen (p \< 0.001) → Larger screen size reduces the probability of being high-priced.\
+-   Memory (p \< 0.001) → More RAM strongly increases the likelihood of being high-priced.
+
+**Not significant predictors (p ≥ 0.05):**
+
+-   Weight\
+-   Rating\
+-   InventoryID\
+-   CompanyLenovo\
+-   TypeName\
+-   GPUIntel\
 
 **Interpretation:**
 
@@ -251,18 +255,21 @@ We give a short summary of the logistic regression model here: - Significant pre
 The linear regression model directly predicts **laptop price** as a continuous outcome.
 
 **Key results:**\
-- **Screen size (-120.55, p \< 0.001):** Larger screens are associated with lower prices.\
-- **Memory (+87.40, p \< 0.001):** Each additional GB of RAM increases price on average by about €87.\
-- **Weight (+268.91, p \< 0.001):** Heavier laptops tend to be more expensive.\
-- **TypeNameUltrabook (+429.31, p \< 0.001):** Ultrabooks are significantly more expensive than Gaming laptops.\
-- **GPUIntel (+156.13, p \< 0.001) and GPUNvidia (+182.92, p \< 0.001):** Both Intel and Nvidia GPUs increase price compared to AMD GPUs.\
-- **TypeNameNotebook (-49.82, p = 0.398):** Not statistically significant.
+
+-   **Screen size (-36.60, p = 0.021):** Larger screens are associated with slightly lower prices.\
+-   **Memory (+90.21, p \< 0.001):** Each additional GB of RAM increases price on average by about €90.\
+-   **Rating (-12.82, p = 0.0067):** Higher ratings are associated with slightly lower prices.\
+-   **CompanyDell (+124.91, p = 0.004) and CompanyHP (+175.31, p \< 0.001):** Dell and HP laptops are priced higher compared to Asus.\
+-   **TypeNameNotebook (-234.46, p \< 0.001):** Notebooks are significantly cheaper than Gaming laptops.\
+-   **TypeNameUltrabook (+203.68, p = 0.0019):** Ultrabooks are significantly more expensive than Gaming laptops.\
+-   **GPUIntel (+163.64, p \< 0.001) and GPUNvidia (+227.60, p \< 0.001):** Both Intel and Nvidia GPUs increase price compared to AMD GPUs.
 
 #### Comparison and Insights
 
--   Both models consistently highlight **Memory** and **GPU type** as important price drivers.\
 -   Logistic regression provides a binary view (is the laptop high-priced or not), while linear regression quantifies *how much* each factor contributes to price in Euros.\
--   Linear regression suggests **Ultrabook type** and **Weight** are also strong price determinants, which were weaker or insignificant in the logistic model.\
+-   Both models consistently highlight **Memory** and **GPU type** as important price drivers.\
+-   **Company (Dell, HP)** is significant in both models, reinforcing the strong effect of branding on price.\
+-   Linear regression suggests **Ultrabook type** is also strong price determinant, which is insignificant in the logistic model.\
 -   The negative effect of **Screen size** appears in both models, reinforcing that larger screens may not always mean higher-priced laptops (likely due to mid-range notebooks with larger but less powerful builds).
 
 ### Question (d) Interpretation of Significant Variables
@@ -279,15 +286,18 @@ The linear regression model directly predicts **laptop price** as a continuous o
 
 When comparing the logistic regression (high-priced vs. low-priced) with the linear regression (continuous price), most predictors show consistent directions of effect, while a few differ.
 
-**Same sign in both models:** - **Memory:** Positive in both → more RAM increases the likelihood of being high-priced and also raises the price level in Euros.\
-- **GPUNvidia:** Positive in both → Nvidia GPUs are associated with higher odds of being expensive and increase absolute price.\
-- **CompanyDell / CompanyHP:** Positive in logistic regression; not included in the linear model specification, so no direct comparison possible.\
-- **Weight:** Positive in both → heavier laptops are more likely to be expensive and also priced higher on average.\
-- **Screen:** Negative in both → larger screens reduce odds of being high-priced and are associated with lower prices.
+**Same sign in both models:**
 
-**Different signs between models:** - **GPUIntel:** Negative in logistic regression (though not significant) but positive in linear regression → Intel GPUs are linked with slightly lower odds of being in the high-price group, yet contribute positively to price as a continuous outcome.\
-- **TypeNameUltrabook:** Negative in logistic regression (not significant) but strongly positive in linear regression → Ultrabooks are not clearly more likely to cross the 500 price threshold, but when they do, their absolute prices are much higher.\
-- **TypeNameNotebook:** Negative in both, but only significant in neither, so practical impact is limited.
+-   **Memory:** Positive in both → more RAM increases the likelihood of being high-priced and also raises the price level in Euros.\
+-   **GPUNvidia:** Positive in both → Nvidia GPUs are associated with higher odds of being expensive and increase absolute price.\
+-   **CompanyDell / CompanyHP:** Positive in both → Dell and HP branding raises both the odds of being high-priced and the absolute price compared to Asus.\
+-   **Screen:** Negative in both → larger screens reduce odds of being high-priced and are associated with lower prices.
+
+**Different signs between models:**
+
+-   **GPUIntel:** Negative in logistic regression (though not significant) but positive in linear regression → Intel GPUs are linked with slightly lower odds of being in the high-price group, yet contribute positively to price as a continuous outcome.\
+-   **TypeNameUltrabook:** Negative in logistic regression (not significant) but strongly positive in linear regression → Ultrabooks are not clearly more likely to cross the 500 price threshold, but when they do, their absolute prices are much higher.\
+-   **TypeNameNotebook:** Negative in both, but only significant in neither, so practical impact is limited.
 
 #### Key takeaway
 
