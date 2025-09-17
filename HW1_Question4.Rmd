@@ -9,6 +9,9 @@ header-includes:
   \usepackage[T1]{fontenc}
   \usepackage[utf8]{inputenc}
   \usepackage{graphicx}
+  \usepackage[margin=1in]{geometry}
+  \usepackage{amsmath}
+  \allowdisplaybreaks
   \DeclareUnicodeCharacter{2265}{\ensuremath{\geq}}
   \DeclareUnicodeCharacter{2264}{\ensuremath{\leq}}
   \DeclareUnicodeCharacter{2248}{\ensuremath{\approx}}
@@ -98,7 +101,7 @@ prop.table(table(df_test$high))
 
 The following plot shows the count of laptops in the training set that are classified as high price (1) or low price (0). The bars are colored steel blue for better visualization.
 
-```{r}
+```{r out.width="0.8\\linewidth", fig.align='center'}
 # Bar plot of high/low price distribution in training set
 ggplot(df_train, aes(factor(high))) +
   geom_bar(fill = "steelblue") +
@@ -108,7 +111,7 @@ ggplot(df_train, aes(factor(high))) +
 
 We do the same for the test set.
 
-```{r}
+```{r out.width="0.8\\linewidth", fig.align='center'}
 # Bar plot of high/low price distribution in test set
 ggplot(df_test, aes(factor(high))) +
   geom_bar(fill = "steelblue") +
@@ -118,7 +121,7 @@ ggplot(df_test, aes(factor(high))) +
 
 From the above plots, we can see that the classes are inbalanced, with more high price laptops (1) than low price laptops (0). The following plot shows the proportion of high price (1) and low price (0) laptops for each company in the training set. Each bar is stacked and filled by the 'high' variable: different colors for high (1) and low (0).
 
-```{r}
+```{r out.width="0.8\\linewidth", fig.align='center'}
 # Bar plot: Company vs High/Low Price in training set
 
 ggplot(df_train, aes(x = Company, fill = factor(high))) +
@@ -130,7 +133,7 @@ ggplot(df_train, aes(x = Company, fill = factor(high))) +
 
 We are doing the same for the test set.
 
-```{r}
+```{r out.width="0.8\\linewidth", fig.align='center'}
 # Bar plot: Company vs High/Low in test set
 ggplot(df_test, aes(x = Company, fill = factor(high))) +
   geom_bar(position = "fill") +
@@ -353,15 +356,20 @@ From the logistic regression model:
 #### Step 2: Compute the Logit (Z)
 
 $$
-Z = \beta_0 + \beta_1(\text{InventoryID}) + \beta_{Lenovo} + \beta_{Ultrabook} + \beta_{Intel} 
-+ \beta_{Screen}(\text{Screen}) + \beta_{Memory}(\text{Memory}) + \beta_{Weight}(\text{Weight}) + \beta_{Rating}(\text{Rating})
+\begin{aligned}
+Z &= \beta_0 + \beta_1(\text{InventoryID}) + \beta_{\text{Lenovo}} + \beta_{\text{Ultrabook}} + \beta_{\text{Intel}} \\
+  &\quad + \beta_{\text{Screen}}\cdot \text{Screen} + \beta_{\text{Memory}}\cdot \text{Memory}
+       + \beta_{\text{Weight}}\cdot \text{Weight} + \beta_{\text{Rating}}\cdot \text{Rating}.
+\end{aligned}
 $$
 
 Substituting the values:
 
 $$
-Z = 26.47131 + (0.0005577 \times 4096) - 0.3677 - 13.25963 - 0.1077 
-+ (-1.1981 \times 8) + (0.7337 \times 8) + (1.5602 \times 4.2) + (-0.0909 \times 7)
+\begin{aligned}
+Z &= 26.47131 + 0.0005577 \times 4096 - 0.3677 - 13.25963 - 0.1077 \\
+  &\quad - 1.1981 \times 8 + 0.7337 \times 8 + 1.5602 \times 4.2 - 0.0909 \times 7.
+\end{aligned}
 $$
 
 $$
