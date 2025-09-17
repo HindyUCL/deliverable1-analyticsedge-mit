@@ -5,19 +5,23 @@ date: "2025-09-11"
 output: html_document
 ---
 
+## R setup
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r include=FALSE}
 library(readr)
 library(dplyr)
 library(ggplot2)
+library(caret)
+library(reshape2)
 ```
 
-## 2. Load Data
+### 1. Load Data
 
-```{r}
+```{r include=TRUE}
 # NOTE: Data files must be in a 'Data' subdirectory relative to this R Markdown file
 # Expected structure:
 #   - prob4.Rmd
@@ -26,15 +30,12 @@ library(ggplot2)
 #     |- laptop_test.csv
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
-# Verify working directory
-getwd()
-
 # Read CSV files using relative paths
 df_train <- read_csv("Data/laptop_train.csv")
 df_test <- read_csv("Data/laptop_test.csv")
 ```
 
-## 3. Data Exploration
+### 2. Data Exploration
 
 ```{r}
 head(df_train)
@@ -65,7 +66,7 @@ colSums(is.na(df_train))   # number of NAs per column
 anyNA(df_train)            # check if dataset has any missing values
 ```
 
-## 4. Create Binary Target Variable
+### 3. Create Binary Target Variable
 
 We are creating a new binary column high for both the test and train dataframes which is 1 if the price is 500 Euros or higher, and 0 otherwise If a laptop's price is ≥ 500 Euros, it gets high = 1 (expensive). If it's ≤ 499.99 Euros, it gets high = 0 (not expensive).
 
@@ -106,9 +107,7 @@ ggplot(df_test, aes(factor(high))) +
        x = "High Price (1 = Yes, 0 = No)", y = "Count")
 ```
 
-From the above plots, we can see that the classes are inbalanced, with more high price laptops (1) than low price laptops (0).
-
-The following plot shows the proportion of high price (1) and low price (0) laptops for each company in the training set. Each bar is stacked and filled by the 'high' variable: different colors for high (1) and low (0).
+From the above plots, we can see that the classes are inbalanced, with more high price laptops (1) than low price laptops (0). The following plot shows the proportion of high price (1) and low price (0) laptops for each company in the training set. Each bar is stacked and filled by the 'high' variable: different colors for high (1) and low (0).
 
 ```{r}
 # Bar plot: Company vs High/Low Price in training set
@@ -131,9 +130,38 @@ ggplot(df_test, aes(x = Company, fill = factor(high))) +
 
 Based on the above plots, we can see whether some manufacturers (Dell, HP, Lenovo, Asus) are more likely to sell high-priced laptops. It just gives us an intuition before we build our model.
 
-## 5. Logistic Regression Model
+### [Optional] Make the dataset balanced
 
-### (a) Build Model
+Here we will use caret package to upsample the minority class (low price laptops) in the training set to make the classes balanced. Since it is now asked, we will just present it here and continue with the original unbalanced dataset for modeling.
+
+```{r}
+# Make copies of the original datasets
+df_train_orig <- df_train
+df_test_orig  <- df_test
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Convert 'high' to factor for classification
+df_train_orig$high <- factor(df_train_orig$high, levels = c(0,1), labels = c("low","high"))
+df_test_orig$high  <- factor(df_test_orig$high,  levels = c(0,1), labels = c("low","high"))
+
+# Upsample the minority class (low price laptops)
+df_train_orig_balanced <- upSample(x = subset(df_train_orig, select = -high),
+                              y = df_train_orig$high,
+                              yname = "high")
+
+# Convert 'high' back to 0/1 for easier analysis
+df_train_orig_balanced$high <- ifelse(df_train_orig_balanced$high == "high", 1, 0)
+
+# Check the distribution of the new binary variable in balanced training set
+table(df_train_orig_balanced$high)
+prop.table(table(df_train_orig_balanced$high))
+```
+
+## Problem 4
+
+### Question (a) Build Model
 
 ```{r}
 # Build logistic regression model
@@ -153,7 +181,7 @@ logistic_model <- glm(high ~ InventoryID + Company + TypeName + GPU + Screen +
 summary(logistic_model)
 ```
 
-### (b) Which variables are significant in predicting the probability of a price's being high?
+### Question (b) Which variables are significant in predicting the probability of a price's being high?
 
 ```{r}
 # Which variables are significant in predicting the probability of a
@@ -164,6 +192,8 @@ significant_vars[significant_vars[,4] < 0.05, ]
 ```
 
 #### Interpretation of Results
+
+The p-value is the probability of observing a sample with results as extreme as, or more extreme than, the observed data, assuming the null hypothesis is true. A lower p-value indicates stronger evidence against the null hypothesis. In this analysis, we use a threshold of 0.05, meaning variables with p-values below this level are considered statistically significant.
 
 **Significant predictors (p \< 0.05):** - CompanyDell (p = 0.020) → Dell laptops are more likely to be high-priced vs. Asus.\
 - CompanyHP (p = 0.018) → HP laptops are also more likely to be high-priced.\
@@ -208,7 +238,7 @@ ggplot(coefs_df, aes(x = reorder(Variable, Estimate), y = Estimate)) +
   labs(title = "Logistic Regression Coefficients", x = "Variable", y = "Estimate")
 ```
 
-### (c) Comparison with the linear regression model
+### Question (c) Comparison with the linear regression model
 
 #### Logistic Regression Model
 
@@ -221,12 +251,12 @@ We give a short summary of the logistic regression model here: - Significant pre
 The linear regression model directly predicts **laptop price** as a continuous outcome.
 
 **Key results:**\
-- **Screen size (–120.55, p \< 0.001):** Larger screens are associated with lower prices.\
+- **Screen size (-120.55, p \< 0.001):** Larger screens are associated with lower prices.\
 - **Memory (+87.40, p \< 0.001):** Each additional GB of RAM increases price on average by about €87.\
 - **Weight (+268.91, p \< 0.001):** Heavier laptops tend to be more expensive.\
 - **TypeNameUltrabook (+429.31, p \< 0.001):** Ultrabooks are significantly more expensive than Gaming laptops.\
 - **GPUIntel (+156.13, p \< 0.001) and GPUNvidia (+182.92, p \< 0.001):** Both Intel and Nvidia GPUs increase price compared to AMD GPUs.\
-- **TypeNameNotebook (–49.82, p = 0.398):** Not statistically significant.
+- **TypeNameNotebook (-49.82, p = 0.398):** Not statistically significant.
 
 #### Comparison and Insights
 
@@ -235,17 +265,17 @@ The linear regression model directly predicts **laptop price** as a continuous o
 -   Linear regression suggests **Ultrabook type** and **Weight** are also strong price determinants, which were weaker or insignificant in the logistic model.\
 -   The negative effect of **Screen size** appears in both models, reinforcing that larger screens may not always mean higher-priced laptops (likely due to mid-range notebooks with larger but less powerful builds).
 
-### (d) Interpretation of Significant Variables
+### Question (d) Interpretation of Significant Variables
 
-| Variable | Effect on Probability of Being High-Priced | Justification |
-|------------------|-----------------------------------|--------------------|
+| Variable | Effect on Probability of Being High-Priced | Possible Explanation |
+|----|----|----|
 | **CompanyDell** | Increases → Dell laptops are more likely to be high-priced compared to Asus. | Dell often offers premium business and gaming models at higher prices. |
 | **CompanyHP** | Increases → HP laptops are more likely to be high-priced compared to Asus. | HP has strong enterprise and premium product lines. |
 | **GPUNvidia** | Increases → Laptops with Nvidia GPUs are more likely to be high-priced compared to AMD. | Nvidia GPUs are powerful and common in high-end gaming/professional laptops. |
 | **Screen** | Decreases → Larger screen size reduces the likelihood of being high-priced. | Counterintuitive, but many premium laptops (e.g., gaming/ultrabooks) favor performance/portability over large displays. |
 | **Memory** | Increases → More RAM increases the likelihood of being high-priced. | Higher RAM is directly linked to better performance. |
 
-### (e) Comparison of coefficient signs between models
+### Question (e) Comparison of coefficient signs between models
 
 When comparing the logistic regression (high-priced vs. low-priced) with the linear regression (continuous price), most predictors show consistent directions of effect, while a few differ.
 
@@ -264,7 +294,7 @@ When comparing the logistic regression (high-priced vs. low-priced) with the lin
 -   The **consistent predictors across both models** are **Memory, Nvidia GPUs, Weight, and Screen size**, all showing the same directional effect.\
 -   The **main divergences** are for **Intel GPUs and Ultrabook type**, where logistic and linear models disagree. This suggests that these features influence *absolute pricing levels* but may not cleanly separate laptops into high- vs. low-price categories.
 
-### (f) Predicting for a Specific Laptop
+### Question (f) Predicting for a Specific Laptop
 
 We want to predict the probability that a given laptop is **high-priced** (≥ 500 Euros).\
 The logistic regression model gives this probability using the logistic function:
@@ -377,7 +407,7 @@ prob_predict <- predict(logistic_model, newdata = new_laptop, type = "response")
 print(paste("Predicted probability (predict):", round(prob_predict, 4)))
 ```
 
-### (g) Model Evaluation on Test Set
+### Question (g) Model Evaluation on Test Set
 
 ```{r}
 # Generate predictions on test set
@@ -430,7 +460,6 @@ The following heatmap provides a visual representation of the confusion matrix f
 # This heatmap shows the confusion matrix for the test set predictions.
 # The fill color (from sky blue to navy) indicates the number of laptops in each cell (Predicted vs Actual).
 # The white text shows the count in each cell.
-library(reshape2)
 cm_df <- as.data.frame(conf_matrix)
 colnames(cm_df) <- c("Predicted", "Actual", "Freq")
 cm_df$Predicted <- factor(cm_df$Predicted, levels = c(1, 0))
