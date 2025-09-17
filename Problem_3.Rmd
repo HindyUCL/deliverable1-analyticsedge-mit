@@ -26,16 +26,33 @@ head(mtcars)
 ```{r}
 summary(mtcars)
 ```
+## Sanity Check for our Models
+
+To make sure our models are correct we will use a function to visualize their equation explicity. 
+```{r}
+# This is our function to visualize the equations
+eq_print <- function(mod, digits = 4, mult_sign = " * ") {
+  b <- coef(mod)
+  fmt <- function(x) formatC(x, digits = digits, format = "f")
+  parts <- Map(function(name, val) {
+    if (name == "(Intercept)") return(fmt(val))
+    nm <- gsub(":", mult_sign, name, fixed = TRUE)
+    paste0(ifelse(val >= 0, " + ", " - "), fmt(abs(val)), " ", nm)
+  }, names(b), b)
+  intercept <- parts[[which(names(b) == "(Intercept)")[1]]]
+  others <- parts[names(b) != "(Intercept)"]
+  paste0("y_hat = ", intercept, paste0(others, collapse = ""))
+}
+```
+
 ## Part a) Fit Model 1 and show summary
 
 ```{r}
 # Model 1: mpg ~ hp + wt + hp*wt
 model1 <- lm(mpg ~ hp + wt + hp*wt, data = mtcars)
-summary(model1)
 
-# Extract R-squared values for comparison
-cat("Model 1 R-squared:", summary(model1)$r.squared, "\n")
-cat("Model 1 Adjusted R-squared:", summary(model1)$adj.r.squared, "\n")
+summary(model1)
+cat(sprintf("Model %d's equation: %s\n", 1, eq_print(model1)))
 ```
 ## Part b) Interpretation of coefficients in Model 1
 
@@ -43,11 +60,14 @@ The interpretation of the coefficients in Model 1:
 
 - **hp coefficient (-0.12010)**: This is the effect of horsepower when weight is equal to zero. While a car cannot realistically weigh zero, this coefficient combines with the interaction term to determine the true effect of hp at different weights. Formally, the marginal effect of horsepower on mpg is:  
   $$\frac{\partial mpg}{\partial hp} = -0.12010 + 0.02785 \cdot wt$$
+  
+  This means that for each additional unit of horsepower, mpg decreases by about 0.12 miles per gallon, but this negative effect becomes less severe as weight increases.
 
 - **wt coefficient (-8.21662)**: This is the effect of weight when horsepower is equal to zero. Again, this is not realistic in practice, but together with the interaction term, it determines how the slope changes at different hp levels. Formally, the marginal effect of weight on mpg is:  
   $$\frac{\partial mpg}{\partial wt} = -8.21662 + 0.02785 \cdot hp$$
+  This means that for each additional unit of weight (1000 lbs), mpg decreases by about 8.22 miles per gallon, but this negative effect becomes less severe as horsepower increases.
 
-- **hp:wt interaction coefficient (0.02785)**: The positive interaction means that the effect of horsepower depends on weight (and vice versa). Specifically:  
+- **hp wt interaction coefficient (0.02785)**: The positive interaction means that the effect of horsepower depends on weight (and vice versa). Specifically:  
   - For heavier cars, the negative effect of horsepower on mpg becomes *less severe*.  
   - For more powerful cars, the negative effect of weight on mpg becomes *less severe*.  
 
@@ -90,10 +110,7 @@ model2 <- lm(mpg ~ hp_centered + wt_centered + hp_centered*wt_centered, data = m
 
 # Summary of stats of model2
 summary(model2)
-
-# Extract R-squared values for comparison
-cat("Model 2 R-squared:", summary(model2)$r.squared, "\n")
-cat("Model 2 Adjusted R-squared:", summary(model2)$adj.r.squared, "\n")
+cat(sprintf("Model %d's equation: %s\n", 2, eq_print(model2)))
 ```
 
 **Comparison of coefficients between Model 1 and Model 2:**
@@ -120,19 +137,14 @@ Both models have identical R-squared values (≈ 0.8848) and adjusted R-squared 
 # Model 3: mpg ~ hp_centered:wt_centered (only interaction, no main effects)
 model3 <- lm(mpg ~ hp_centered:wt_centered, data = mtcars)
 summary(model3)
-
-# Extract R-squared values for comparison
-cat("Model 3 R-squared:", summary(model3)$r.squared, "\n")
-cat("Model 3 Adjusted R-squared:", summary(model3)$adj.r.squared, "\n")
+cat(sprintf("Model %d's equation: %s\n", 3, eq_print(model3))) 
 ```
 
 **Comparison of coefficients across all three models:**
 
 #### Model 3 results
 - **Intercept:** 19.41692  
-- **hp_centered:** excluded (forced to 0)  
-- **wt_centered:** excluded (forced to 0)  
-- **hp_centered : wt_centered:** 0.01574  
+- **hp_centered wt_centered:** 0.01574  
 
 #### R-squared Comparison Across All Models
 
@@ -153,53 +165,19 @@ print(r_squared_comparison)
 
 **Key R-squared Observations:**
 
-1. **Models 1 and 2 are identical:** Both achieve R² ≈ 0.8848 and adjusted R² ≈ 0.8724, confirming that mean-centering preserves model fit.
+1. **Models 1 and 2 are mathematically equivalent::** Both achieve R² ≈ 0.8848 and adjusted R² ≈ 0.8848, confirming that mean-centering preserves model fit. They produce identical predictions despite different coefficient interpretations.
 
 2. **Model 3 shows dramatic decline:** R² drops to ≈ 0.0189 (only 1.89% of variance explained), demonstrating the critical importance of including main effects.
+
+3. **Model 2 coefficients represent marginal effects at means:** The hp coefficient in Model 2 exactly equals the marginal effect of hp when wt equals its mean, calculated from Model 1.
 
 3. **Statistical significance:** 
    - Models 1 and 2: Highly significant (p < 0.001)
    - Model 3: Not statistically significant (p ≈ 0.454)
 
-4. **Practical interpretation:** The interaction alone explains almost nothing about mpg variation, while the full model (with main effects) explains nearly 88% of the variance.
+4. **Practical interpretation:** The interaction alone explains almost nothing about mpg variation, while the full model (with main effects) explains nearly 88% of the variance in mpg.
 
-#### Verification of Our Understanding
-
-```{r}
-# Verification 1: Check that Models 1 and 2 produce identical predictions
-predictions1 <- predict(model1, mtcars)
-predictions2 <- predict(model2, mtcars)
-cat("Are Model 1 and Model 2 predictions identical?", all.equal(predictions1, predictions2), "\n")
-
-# Verification 2: Calculate marginal effects manually from Model 1
-hp_mean <- mean(mtcars$hp)
-wt_mean <- mean(mtcars$wt)
-
-# Marginal effect of hp at mean wt from Model 1
-marginal_hp_model1 <- -0.12010 + 0.02785 * wt_mean
-cat("Marginal effect of hp at mean wt (Model 1):", marginal_hp_model1, "\n")
-cat("hp coefficient in Model 2:", coef(model2)["hp_centered"], "\n")
-cat("Difference:", abs(marginal_hp_model1 - coef(model2)["hp_centered"]), "\n")
-
-# Marginal effect of wt at mean hp from Model 1  
-marginal_wt_model1 <- -8.21662 + 0.02785 * hp_mean
-cat("Marginal effect of wt at mean hp (Model 1):", marginal_wt_model1, "\n")
-cat("wt coefficient in Model 2:", coef(model2)["wt_centered"], "\n")
-cat("Difference:", abs(marginal_wt_model1 - coef(model2)["wt_centered"]), "\n")
-
-# Verification 3: Show that Model 3's poor fit is due to missing main effects
-cat("\nModel 3 explains only", round(summary(model3)$r.squared * 100, 1), "% of variance\n")
-cat("Model 1 explains", round(summary(model1)$r.squared * 100, 1), "% of variance\n")
-cat("Loss from removing main effects:", round((summary(model1)$r.squared - summary(model3)$r.squared) * 100, 1), "percentage points\n")
-```
-
-**This verification proves our understanding:**
-
-1. **Models 1 and 2 are mathematically equivalent:** They produce identical predictions despite different coefficient interpretations.
-
-2. **Model 2 coefficients represent marginal effects at means:** The hp coefficient in Model 2 exactly equals the marginal effect of hp when wt equals its mean, calculated from Model 1.
-
-3. **Main effects are crucial:** Removing them causes an 86+ percentage point drop in R², demonstrating that individual effects of hp and wt are far more important than their interaction alone.
+5. **Main effects are crucial:** Removing them causes an 86+ percentage point drop in R², demonstrating that individual effects of hp and wt are far more important than their interaction alone.
 
 ---
 
@@ -223,15 +201,8 @@ cat("Loss from removing main effects:", round((summary(model1)$r.squared - summa
 ---
 
 #### Interpretation
-Model 3 preserves the interaction effect but ignores the independent contributions of horsepower and weight. While its intercept represents predicted mpg at average hp and wt (similar to Model 2), excluding main effects makes it a weaker and less realistic specification. Importantly, the interaction coefficient in Model 3 (0.01574) is different from Models 1 and 2 (0.02785), indicating that the interaction term is absorbing some of the effect that should be attributed to the main effects.**
-
-**R-squared Analysis Summary:**
-- **Models 1 and 2:** Both achieve excellent fit with R² ≈ 0.885 and adjusted R² ≈ 0.872, explaining nearly 88% of mpg variance
-- **Model 3:** Dramatically poor fit with R² ≈ 0.019, explaining only 1.9% of variance
-- **Statistical significance:** Models 1 and 2 are highly significant (p < 0.001), while Model 3 is not significant (p ≈ 0.454)
-
-**Conclusion:** Models 1 and 2 provide more accurate and interpretable insights into how hp and wt affect mpg, both individually and jointly. The R-squared analysis clearly demonstrates that main effects are essential for understanding mpg variation, while the interaction alone is insufficient. Model 2 is particularly valuable because it provides interpretable coefficients representing effects at realistic baseline values (mean hp and wt), making it the preferred choice for practical applications.
+Model 3 preserves the interaction effect but ignores the independent contributions of horsepower and weight. While its intercept represents predicted mpg at average hp and wt (similar to Model 2), excluding main effects makes it a weaker and less realistic specification. Importantly, the interaction coefficient in Model 3 (0.01574) is different from Models 1 and 2 (0.02785), indicating that the interaction term is absorbing some of the effect that should be attributed to the main effects.
 
 ## Part e) Mathematical explanation
 
-See the following handwritten explanations.
+See the following handwritten notes. 
