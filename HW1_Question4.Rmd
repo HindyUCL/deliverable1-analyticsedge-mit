@@ -2,7 +2,16 @@
 title: "Problem 4"
 author: "Hindy Rossignol, Riya Parikh, Mrugank Pednekar, Ioannis Panagiotopoulos"
 date: "2025-09-11"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
+header-includes:
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{graphicx}
+  \DeclareUnicodeCharacter{2265}{\ensuremath{\geq}}
+  \DeclareUnicodeCharacter{2264}{\ensuremath{\leq}}
+  \DeclareUnicodeCharacter{2248}{\ensuremath{\approx}}
 ---
 
 ## R setup
@@ -114,7 +123,8 @@ From the above plots, we can see that the classes are inbalanced, with more high
 
 ggplot(df_train, aes(x = Company, fill = factor(high))) +
   geom_bar(position = "fill") +
-  labs(title = "Proportion of High/Low Price by Company in train set", y = "Proportion", fill = "High") +
+  labs(title = "Proportion of High/Low Price by Company in train set", 
+        y = "Proportion", fill = "High") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -124,7 +134,8 @@ We are doing the same for the test set.
 # Bar plot: Company vs High/Low in test set
 ggplot(df_test, aes(x = Company, fill = factor(high))) +
   geom_bar(position = "fill") +
-  labs(title = "Proportion of High/Low Price by Company in test set", y = "Proportion", fill = "High") +
+  labs(title = "Proportion of High/Low Price by Company in test set", 
+        y = "Proportion", fill = "High") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -132,7 +143,7 @@ Based on the above plots, we can see whether some manufacturers (Dell, HP, Lenov
 
 ### [Optional] Make the dataset balanced
 
-Here we will use caret package to upsample the minority class (low price laptops) in the training set to make the classes balanced. Since it is now asked, we will just present it here and continue with the original unbalanced dataset for modeling.
+Here we will use caret package to upsample the minority class (low price laptops) in the training set to make the classes balanced. Since it is not asked, we will just present it here and continue with the original unbalanced dataset for modeling.
 
 ```{r}
 # Make copies of the original datasets
@@ -227,10 +238,9 @@ So, coefficients are relative to these baselines.
 
 #### Visualize Coefficients (optional)
 
-```{r}
-# Visualize model coefficients (excluding intercept)
-# This horizontal bar plot shows the estimated coefficients from the logistic regression model (excluding the intercept).
-# Each bar represents a variable, and the length and direction indicate the effect size and sign.
+Visualize model coefficients (excluding intercept). This horizontal bar plot shows the estimated coefficients from the logistic regression model (excluding the intercept). Each bar represents a variable, and the length and direction indicate the effect size and sign.
+
+```{r out.width="0.8\\linewidth", fig.align='center'}
 # Bars are colored dark orange for better visibility.
 coefs_df <- as.data.frame(summary(logistic_model)$coefficients)
 coefs_df$Variable <- rownames(coefs_df)
@@ -463,13 +473,10 @@ $$
 
 #### Visualization
 
-The following heatmap provides a visual representation of the confusion matrix for the test set predictions.
+The following heatmap provides a visual representation of the confusion matrix for the test set predictions. This heatmap shows the confusion matrix for the test set predictions. The fill color (from sky blue to navy) indicates the number of laptops in each cell (Predicted vs Actual).
 
 ```{r}
 # Visualize confusion matrix as heatmap
-# This heatmap shows the confusion matrix for the test set predictions.
-# The fill color (from sky blue to navy) indicates the number of laptops in each cell (Predicted vs Actual).
-# The white text shows the count in each cell.
 cm_df <- as.data.frame(conf_matrix)
 colnames(cm_df) <- c("Predicted", "Actual", "Freq")
 cm_df$Predicted <- factor(cm_df$Predicted, levels = c(1, 0))
