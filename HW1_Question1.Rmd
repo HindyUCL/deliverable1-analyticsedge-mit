@@ -1,0 +1,152 @@
+---
+title: "Question 1"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r, message=FALSE, warning=FALSE}
+# Question 1.
+
+## (a)
+
+library(tidyverse)
+library(dplyr)
+
+train <- read.csv("laptop_train.csv")
+test  <- read.csv("laptop_test.csv")
+
+train$Company  <- factor(train$Company)
+train$TypeName <- factor(train$TypeName)
+train$GPU      <- factor(train$GPU)
+
+# These should stay numeric
+num_vars <- c("Screen","Memory","Weight","Rating","Price")
+train[num_vars] <- lapply(train[num_vars], as.numeric)
+
+# correlation matrix
+cor(train[, num_vars], use = "complete.obs")
+
+# Base Model
+model1 <- lm(Price ~ InventoryID + Screen + Memory + Weight + Rating + Company + TypeName + GPU, data = train)
+summary(model1)
+
+# Model to compare with
+model_final <- lm(Price ~ Screen + Memory + Company + TypeName + GPU, data = train)
+summary(model_final)
+
+
+## (b)
+
+# In the final model, the effects of Screen, Memory, Company, Ultrabook type, and GPU are managerially sensible,
+# as they align with expectations that higher RAM, premium designs, brand value, stronger GPUs increase laptop prices.
+# However, the negative effect of Screen size seems to be conterintuitive. Furthermore, the positive effect of Weight
+# (removed from the original model due to high collinearity), and the negative but insignificant impact of Rating
+# (not in my final model as model gets a higher Out of sample R^2 without it) making them worthy of further investigation.
+#
+# I'd like to investigate a few variables. Screen size shows a negative effect on price, which is counterintuitive
+# and may be influenced by its high correlation with weight. Similarly, Weight has a positive effect that may
+# reflect gaming laptops but does not capture the premium consumers pay for lighter ultrabooks.
+
+
+## (c)
+
+# Based on the model, HP has the highest effect on laptop price, commanding the largest premium over Asus.
+# Since all the coefficients for the companies Dell, HP, and Lenovo are positive, Asus has the smallest effect on price.
+
+
+## (d)
+
+# The out of sample R^2 of the model is 0.5225497.
+
+pred_test <- predict(model_final, newdata = test)
+sse <- sum((test$Price - pred_test)^2)
+sst <- sum((test$Price - mean(test$Price))^2)
+R2_out <- 1 - sse/sst
+R2_out  # out-of-sample R²
+
+# Interpretation: This means that when predicting laptop prices on unseen test data,
+# the model explains about 55% of the variation in prices compared to simply predicting the mean price for all laptops.
+
+library(olsrr) # tools for building OLS regression models: OLS = ordinary least squares
+ols_step_backward_p(model1, p_val = 0.05, progress = TRUE)
+
+
+## (e)
+
+newlap <- data.frame(
+  InventoryID = 950,
+  Screen = 15.6,
+  Memory = 6,
+  Weight = 3,
+  Rating = 8,
+  Company = factor("Asus", levels = levels(train$Company)),
+  TypeName = factor("Ultrabook", levels = levels(train$TypeName)),
+  GPU = factor("Intel", levels = levels(train$GPU))
+)
+
+# Prediction with prediction interval (includes error variance)
+pred <- predict(model_final, newdata = newlap, interval = "prediction", level = 0.95)
+pred
+
+p <- predict(model_final, newdata = newlap, se.fit = TRUE)
+sigma2 <- summary(model_final)$sigma^2
+se_pred <- sqrt(p$se.fit^2 + sigma2)
+df <- model_final$df.residual
+
+t_stat <- (1100 - p$fit) / se_pred
+prob_gt_1100 <- 1 - pt(t_stat, df = df)
+prob_gt_1100
+
+# Assuming normally distributed errors,
+# the probability that the actual price exceeds €1,100 is 0.4901189
+
+
+## (f)
+
+model_mem_gpu <- lm(Price ~ Screen + Memory + Weight + TypeName + Company +
+                      GPU + Memory:GPU, data = train)
+summary(model_mem_gpu)
+
+pred_test <- predict(model_mem_gpu, newdata = test)
+sse <- sum((test$Price - pred_test)^2)
+sst <- sum((test$Price - mean(test$Price))^2)
+R2_out <- 1 - sse/sst
+R2_out  # out-of-sample R²
+
+# Unlike the main-effects model, this interaction model reveals that the impact of RAM is not constant across GPUs;
+# instead, the price premium for memory is significantly higher when Intel or Nvidia GPUs are present.
+#
+# For AMD laptops, each extra GB of RAM adds about €58.768 to price. With Intel and Nvidia GPUs, the RAM effect
+# is less stronger—around €37.095/GB and €32.364/GB, respectively. The standalone GPU effects are significant between
+# AMD and (Intel, Nvidia), indicating that GPUs from AMD are costlier for every unit increase in RAM.
+
+
+## (g)
+
+train$Company  <- factor(train$Company,  levels = c("Asus","Dell","HP","Lenovo"))  
+train$TypeName <- factor(train$TypeName, levels = c("Gaming","Notebook","Ultrabook"))
+train$GPU      <- factor(train$GPU,      levels = c("AMD","Intel","Nvidia"))
+
+# Model with GPU × Company interaction
+model_gpu_company <- lm(
+  Price ~ Screen + Memory + Weight + TypeName + GPU + Company + GPU:Company,
+  data = train
+)
+summary(model_gpu_company)
+
+pred_test <- predict(model_gpu_company, newdata = test)
+sse <- sum((test$Price - pred_test)^2)
+sst <- sum((test$Price - mean(test$Price))^2)
+R2_out <- 1 - sse/sst
+R2_out  # out-of-sample R²
+
+# The coefficients show that the price impact of GPUs is not consistent across manufacturers.
+# For instance, Intel GPUs are discounted on Asus models but can add value on HP models,
+# indicating brand-specific GPU pricing strategies.
+#
+# For Asus (baseline), Intel GPUs reduce price by about €279 and Nvidia by €51 (not significant).
+# The interaction terms show brand differences: Intel GPUs are much higher and positive for Dell (418.489 €),
+# and turn even higher for HP (+471.820 €), and much higher for Lenovo (+500.572 €).
+# Nvidia effects also vary by brand (At HP where Nvidia is much cheaper at +153.027 and Lenovo at +227.567. Dell at +478.916).
+```
