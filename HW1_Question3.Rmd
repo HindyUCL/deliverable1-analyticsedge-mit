@@ -242,7 +242,7 @@ $$
 
 $$
 \begin{aligned}
-mpg = \beta_0 + \beta_1 (h_p - \bar{h_p}) + \beta_2 (w_t - \bar{w_t}) + \beta_3 (h_p - \bar{h_p})(w_t - \bar{w_t}) + \epsilon \\ 
+mpg = \beta_0 + \beta_1 h_p - \beta_1 \bar{h_p} + \beta_2 w_t - \beta_2 \bar{w_t} + \beta_3 h_p w_t - \beta_3 h_p \bar{w_t} - \beta_3 \bar{h_p} w_t + \beta_3 \bar{h_p} \bar{w_t} + \epsilon \\
 \end{aligned}
 $$
 
@@ -289,7 +289,7 @@ $$
 
 $$
 \begin{aligned}
-mpg = \beta_0 + (\beta_3 h_p - \beta_3 \bar{w_t}) (w_t - \bar{w_t}) + \epsilon \\
+mpg = \beta_0 + (\beta_3 h_p - \beta_3 \bar{h_p}) (w_t - \bar{w_t}) + \epsilon \\
 \end{aligned}
 $$
 
