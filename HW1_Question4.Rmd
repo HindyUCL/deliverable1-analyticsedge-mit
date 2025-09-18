@@ -259,9 +259,11 @@ ggplot(coefs_df, aes(x = reorder(Variable, Estimate), y = Estimate)) +
 
 #### Logistic Regression Model
 
-We give a short summary of the logistic regression model here: - Significant predictors (p \< 0.05) included: **Company (Dell, HP), GPU (Nvidia), Screen size, and Memory**.\
-- Results suggest that **Dell/HP branding, more RAM, and Nvidia GPUs** increase the odds of a laptop being high-priced, while **larger screen sizes reduce** those odds.\
-- Baseline categories are: **Asus (Company), Gaming (TypeName), AMD (GPU)**. Coefficients for other categories are interpreted relative to these baselines.
+We give a short summary of the logistic regression model here:
+
+-   Significant predictors (p \< 0.05) included: **Company (Dell, HP), GPU (Nvidia), Screen size, and Memory**.\
+-   Results suggest that **Dell/HP branding, more RAM, and Nvidia GPUs** increase the odds of a laptop being high-priced, while **larger screen sizes reduce** those odds.\
+-   Baseline categories are: **Asus (Company), Gaming (TypeName), AMD (GPU)**. Coefficients for other categories are interpreted relative to these baselines.
 
 #### Linear Regression Model
 
@@ -288,7 +290,7 @@ The linear regression model directly predicts **laptop price** as a continuous o
 ### Question (d) Interpretation of Significant Variables
 
 | Variable | Effect on Probability of Being High-Priced | Possible Explanation |
-|----|----|----|
+|------------------------|------------------------|------------------------|
 | **CompanyDell** | Increases → Dell laptops are more likely to be high-priced compared to Asus. | Dell often offers premium business and gaming models at higher prices. |
 | **CompanyHP** | Increases → HP laptops are more likely to be high-priced compared to Asus. | HP has strong enterprise and premium product lines. |
 | **GPUNvidia** | Increases → Laptops with Nvidia GPUs are more likely to be high-priced compared to AMD. | Nvidia GPUs are powerful and common in high-end gaming/professional laptops. |
@@ -310,7 +312,7 @@ When comparing the logistic regression (high-priced vs. low-priced) with the lin
 
 -   **GPUIntel:** Negative in logistic regression (though not significant) but positive in linear regression → Intel GPUs are linked with slightly lower odds of being in the high-price group, yet contribute positively to price as a continuous outcome.\
 -   **TypeNameUltrabook:** Negative in logistic regression (not significant) but strongly positive in linear regression → Ultrabooks are not clearly more likely to cross the 500 price threshold, but when they do, their absolute prices are much higher.\
--   **TypeNameNotebook:** Negative in both, but only significant in neither, so practical impact is limited.
+-   **TypeNameNotebook:** Negative in both, but only significant in linear regression.
 
 #### Key takeaway
 
